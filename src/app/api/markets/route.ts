@@ -2,6 +2,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Market, MarketCategory } from '@/types'
 
+// Local outcome type for parsed markets
+interface Outcome {
+  id: string
+  name: string
+  price: number
+  probability: number
+  volume24h: number
+  priceChange24h: number
+}
+
 // Simple Polymarket API types based on actual response
 interface PolymarketMarket {
   id: string
@@ -26,7 +36,7 @@ interface PolymarketMarket {
 }
 
 // Parse outcomes and prices from API strings
-function parseOutcomesAndPrices(outcomes: string, outcomePrices: string) {
+function parseOutcomesAndPrices(outcomes: string, outcomePrices: string): Outcome[] {
   try {
     const outcomeArray = JSON.parse(outcomes || '["Yes", "No"]')
     const priceArray = JSON.parse(outcomePrices || '[0.5, 0.5]')
@@ -162,7 +172,7 @@ function transformMarket(market: PolymarketMarket): Market {
 
   // Distribute volume among outcomes
   const volume24h = market.volume24hr || 0
-  outcomes.forEach((outcome: typeof outcomes[number]) => {
+  outcomes.forEach((outcome: Outcome) => {
     outcome.volume24h = volume24h / outcomes.length
   })
 
@@ -184,10 +194,11 @@ function transformMarket(market: PolymarketMarket): Market {
     rules: 'Market resolves based on Polymarket resolution criteria.',
     minPrice: 0.01,
     maxPrice: 0.99,
-    currentPrices: outcomes.reduce<Record<string, number>>((acc, outcome: typeof outcomes[number]) => {
+    // IMPORTANT FIX: don't use a generic on an untyped call; type the initial accumulator instead.
+    currentPrices: outcomes.reduce((acc, outcome) => {
       acc[outcome.id] = outcome.price
       return acc
-    }, {}),
+    }, {} as Record<string, number>),
   }
 }
 
