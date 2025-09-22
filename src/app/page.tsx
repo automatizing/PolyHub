@@ -355,9 +355,11 @@ export default function HomePage() {
             Discover real prediction markets and stay informed about the events that matter.
           </p>
           <div className="flex justify-center">
-            <Button size="lg" variant="secondary" className="text-lg px-8" asChild>
-              <Link href="/markets">Browse Markets</Link>
-            </Button>
+            <Link href="/markets">
+              <Button size="lg" variant="secondary" className="text-lg px-8">
+                Browse Markets
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
