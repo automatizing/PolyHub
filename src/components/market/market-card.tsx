@@ -162,11 +162,11 @@ export function MarketCard({
         {/* Actions */}
         {showActions && !isCompact && (
           <div className="flex gap-2 pt-3">
-            <Button variant="outline" size="sm" className="flex-1" asChild>
-              <Link href={`/markets/${market.id}`}>
+            <Link href={`/markets/${market.id}`} className="flex-1">
+              <Button variant="outline" size="sm" className="w-full">
                 View Details
-              </Link>
-            </Button>
+              </Button>
+            </Link>
             <Button size="sm" className="flex-1">
               Trade Now
             </Button>
@@ -175,11 +175,11 @@ export function MarketCard({
 
         {/* Compact action */}
         {showActions && isCompact && (
-          <Button size="sm" className="w-full" asChild>
-            <Link href={`/markets/${market.id}`}>
+          <Link href={`/markets/${market.id}`} className="w-full">
+            <Button size="sm" className="w-full">
               Trade
-            </Link>
-          </Button>
+            </Button>
+          </Link>
         )}
       </CardContent>
     </Card>
