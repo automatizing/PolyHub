@@ -32,16 +32,7 @@ export function MarketCard({
       isFeatured && 'border-primary/20 bg-gradient-to-br from-primary/5 to-background',
       className
     )}>
-      {/* Featured badge */}
-      {market.featured && !isCompact && (
-        <div className="absolute top-3 right-3 z-10">
-          <Badge variant="default" className="text-xs">
-            Featured
-          </Badge>
-        </div>
-      )}
-
-      {/* Trending indicator */}
+      {/* Trending indicator - only badge we keep */}
       {market.trending && (
         <div className="absolute top-3 left-3 z-10">
           <div className="flex items-center gap-1 text-xs text-orange-600 dark:text-orange-400">
@@ -54,10 +45,21 @@ export function MarketCard({
       <CardHeader className={cn(
         'pb-3',
         isCompact ? 'p-4' : 'p-6',
-        (market.featured || market.trending) && !isCompact && 'pt-8'
+        // Reduced top padding since we removed the right badges
+        market.trending && !isCompact ? 'pt-10' : 'pt-6'
       )}>
-        {/* Category and status */}
-        <div className="flex items-center justify-between gap-2 mb-2">
+        {/* Question title */}
+        <Link href={`/markets/${market.id}`} className="group">
+          <h3 className={cn(
+            'font-semibold leading-tight group-hover:text-primary transition-colors line-clamp-2 mb-0.5',
+            isCompact ? 'text-sm' : 'text-base'
+          )}>
+            {market.question}
+          </h3>
+        </Link>
+
+        {/* Category badge - closer to title and aligned left */}
+        <div className="mb-5 -ml-1">
           <Badge 
             variant="outline" 
             className="text-xs"
@@ -68,23 +70,10 @@ export function MarketCard({
           >
             {market.category.name}
           </Badge>
-          <Badge variant={status as any} className={cn('text-xs', statusColor)}>
-            {status.replace('_', ' ')}
-          </Badge>
         </div>
 
-        {/* Question */}
-        <Link href={`/markets/${market.id}`} className="group">
-          <h3 className={cn(
-            'font-semibold leading-tight group-hover:text-primary transition-colors line-clamp-2',
-            isCompact ? 'text-sm' : 'text-base'
-          )}>
-            {market.question}
-          </h3>
-        </Link>
-
         {/* Time until close */}
-        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2">
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <Clock className="h-3 w-3" />
           <span>{formatTimeUntilClose(market.closingTime)}</span>
         </div>
@@ -173,11 +162,11 @@ export function MarketCard({
         {/* Actions */}
         {showActions && !isCompact && (
           <div className="flex gap-2 pt-3">
-            <Button variant="outline" size="sm" className="flex-1" asChild>
-              <Link href={`/markets/${market.id}`}>
+            <Link href={`/markets/${market.id}`} className="flex-1">
+              <Button variant="outline" size="sm" className="w-full">
                 View Details
-              </Link>
-            </Button>
+              </Button>
+            </Link>
             <Button size="sm" className="flex-1">
               Trade Now
             </Button>
@@ -186,11 +175,11 @@ export function MarketCard({
 
         {/* Compact action */}
         {showActions && isCompact && (
-          <Button size="sm" className="w-full" asChild>
-            <Link href={`/markets/${market.id}`}>
+          <Link href={`/markets/${market.id}`} className="w-full">
+            <Button size="sm" className="w-full">
               Trade
-            </Link>
-          </Button>
+            </Button>
+          </Link>
         )}
       </CardContent>
     </Card>
