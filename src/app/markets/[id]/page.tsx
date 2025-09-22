@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { 
   ArrowLeft, 
@@ -18,7 +19,7 @@ import {
 import { Layout } from '@/components/layout'
 import { MarketChart } from '@/components/market/market-chart'
 import { MarketDetailSkeleton } from '@/components/market/market-skeleton'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -221,12 +222,17 @@ export default function MarketDetailPage() {
                 <Share2 className="h-4 w-4 mr-2" />
                 Share Market
               </Button>
-              <Button variant="outline" className="w-full" asChild>
-                <a href="#" target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  View on External Platform
-                </a>
-              </Button>
+
+              {/* Replaced Button with asChild by a Link styled as a Button */}
+              <Link
+                href="#"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(buttonVariants({ variant: 'outline' }), 'w-full')}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                View on External Platform
+              </Link>
             </div>
           </div>
         </div>
