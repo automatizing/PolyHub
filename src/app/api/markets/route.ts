@@ -20,8 +20,8 @@ interface PolymarketMarket {
   closed: boolean
   featured?: boolean
   new?: boolean
-  tags?: Array<{label: string, slug: string}>
-  categories?: Array<{label: string, slug: string}>
+  tags?: Array<{ label: string; slug: string }>
+  categories?: Array<{ label: string; slug: string }>
   createdAt: string
 }
 
@@ -39,7 +39,7 @@ function parseOutcomesAndPrices(outcomes: string, outcomePrices: string) {
       volume24h: 0, // Will be calculated from market volume
       priceChange24h: (Math.random() - 0.5) * 0.1,
     }))
-  } catch (error) {
+  } catch (_error) {
     // Fallback to binary outcomes
     return [
       { id: 'yes', name: 'Yes', price: 0.5, probability: 0.5, volume24h: 0, priceChange24h: 0 },
@@ -50,42 +50,109 @@ function parseOutcomesAndPrices(outcomes: string, outcomePrices: string) {
 
 // Get category from tags and categories
 function getCategoryFromMarket(market: PolymarketMarket): MarketCategory {
-  const tags = market.tags?.map(t => t.label.toLowerCase()) || []
-  const categories = market.categories?.map(c => c.label.toLowerCase()) || []
+  const tags = market.tags?.map((t) => t.label.toLowerCase()) || []
+  const categories = market.categories?.map((c) => c.label.toLowerCase()) || []
   const allLabels = [...tags, ...categories]
   const question = market.question.toLowerCase()
 
-  if (allLabels.some(label => ['politics', 'election', 'government'].includes(label)) ||
-      question.includes('election') || question.includes('president') || question.includes('trump') ||
-      question.includes('powell') || question.includes('fed')) {
-    return { id: 'politics', name: 'Politics', slug: 'politics', description: 'Elections and political events', color: '#3B82F6', icon: 'Vote' }
+  if (
+    allLabels.some((label) => ['politics', 'election', 'government'].includes(label)) ||
+    question.includes('election') ||
+    question.includes('president') ||
+    question.includes('trump') ||
+    question.includes('powell') ||
+    question.includes('fed')
+  ) {
+    return {
+      id: 'politics',
+      name: 'Politics',
+      slug: 'politics',
+      description: 'Elections and political events',
+      color: '#3B82F6',
+      icon: 'Vote',
+    }
   }
 
-  if (allLabels.some(label => ['sports', 'nfl', 'nba'].includes(label)) ||
-      question.includes('sport') || question.includes('super bowl') || question.includes('nfl')) {
-    return { id: 'sports', name: 'Sports', slug: 'sports', description: 'Sports predictions and outcomes', color: '#EF4444', icon: 'Trophy' }
+  if (
+    allLabels.some((label) => ['sports', 'nfl', 'nba'].includes(label)) ||
+    question.includes('sport') ||
+    question.includes('super bowl') ||
+    question.includes('nfl')
+  ) {
+    return {
+      id: 'sports',
+      name: 'Sports',
+      slug: 'sports',
+      description: 'Sports predictions and outcomes',
+      color: '#EF4444',
+      icon: 'Trophy',
+    }
   }
 
-  if (allLabels.some(label => ['crypto', 'bitcoin', 'ethereum'].includes(label)) ||
-      question.includes('bitcoin') || question.includes('crypto')) {
-    return { id: 'crypto', name: 'Crypto', slug: 'crypto', description: 'Cryptocurrency and blockchain', color: '#F59E0B', icon: 'Coins' }
+  if (
+    allLabels.some((label) => ['crypto', 'bitcoin', 'ethereum'].includes(label)) ||
+    question.includes('bitcoin') ||
+    question.includes('crypto')
+  ) {
+    return {
+      id: 'crypto',
+      name: 'Crypto',
+      slug: 'crypto',
+      description: 'Cryptocurrency and blockchain',
+      color: '#F59E0B',
+      icon: 'Coins',
+    }
   }
 
-  if (allLabels.some(label => ['business', 'stock', 'economy'].includes(label)) ||
-      question.includes('stock') || question.includes('fed')) {
-    return { id: 'business', name: 'Business', slug: 'business', description: 'Corporate and economic events', color: '#10B981', icon: 'Building' }
+  if (
+    allLabels.some((label) => ['business', 'stock', 'economy'].includes(label)) ||
+    question.includes('stock') ||
+    question.includes('fed')
+  ) {
+    return {
+      id: 'business',
+      name: 'Business',
+      slug: 'business',
+      description: 'Corporate and economic events',
+      color: '#10B981',
+      icon: 'Building',
+    }
   }
 
-  if (allLabels.some(label => ['technology', 'tech'].includes(label)) ||
-      question.includes('tiktok') || question.includes('tech')) {
-    return { id: 'technology', name: 'Technology', slug: 'technology', description: 'Tech developments and releases', color: '#8B5CF6', icon: 'Cpu' }
+  if (
+    allLabels.some((label) => ['technology', 'tech'].includes(label)) ||
+    question.includes('tiktok') ||
+    question.includes('tech')
+  ) {
+    return {
+      id: 'technology',
+      name: 'Technology',
+      slug: 'technology',
+      description: 'Tech developments and releases',
+      color: '#8B5CF6',
+      icon: 'Cpu',
+    }
   }
 
   if (question.includes('taylor swift') || question.includes('celebrity')) {
-    return { id: 'entertainment', name: 'Entertainment', slug: 'entertainment', description: 'Movies, TV, and celebrity events', color: '#F97316', icon: 'Film' }
+    return {
+      id: 'entertainment',
+      name: 'Entertainment',
+      slug: 'entertainment',
+      description: 'Movies, TV, and celebrity events',
+      color: '#F97316',
+      icon: 'Film',
+    }
   }
 
-  return { id: 'other', name: 'Other', slug: 'other', description: 'Miscellaneous predictions', color: '#6B7280', icon: 'HelpCircle' }
+  return {
+    id: 'other',
+    name: 'Other',
+    slug: 'other',
+    description: 'Miscellaneous predictions',
+    color: '#6B7280',
+    icon: 'HelpCircle',
+  }
 }
 
 // Transform Polymarket data to our format
@@ -112,15 +179,15 @@ function transformMarket(market: PolymarketMarket): Market {
     resolved: market.closed,
     featured: market.featured || false,
     trending: market.new || false,
-    tags: market.tags?.map(t => t.label) || [],
+    tags: market.tags?.map((t) => t.label) || [],
     creator: 'Polymarket',
     rules: 'Market resolves based on Polymarket resolution criteria.',
     minPrice: 0.01,
     maxPrice: 0.99,
-    currentPrices: outcomes.reduce((acc, outcome) => {
+    currentPrices: outcomes.reduce<Record<string, number>>((acc, outcome: typeof outcomes[number]) => {
       acc[outcome.id] = outcome.price
       return acc
-    }, {} as Record<string, number>),
+    }, {}),
   }
 }
 
@@ -137,12 +204,15 @@ export async function GET(request: NextRequest) {
 
     switch (type) {
       case 'featured':
+        // Featured: Active markets with high volume and liquidity, ordered by volume
         apiUrl = `https://gamma-api.polymarket.com/markets?limit=100&closed=false&volume_num_min=5000&liquidity_num_min=1000&order=volumeNum&ascending=false&include_tag=true`
         break
       case 'trending':
+        // Trending: Recent active markets with decent volume, ordered by recent activity
         apiUrl = `https://gamma-api.polymarket.com/markets?limit=100&closed=false&volume_num_min=1000&order=volume24hr&ascending=false&include_tag=true`
         break
       default:
+        // All markets: Active markets ordered by volume
         apiUrl = `https://gamma-api.polymarket.com/markets?limit=100&closed=false&order=volumeNum&ascending=false&include_tag=true`
     }
 
@@ -150,10 +220,10 @@ export async function GET(request: NextRequest) {
 
     const response = await fetch(apiUrl, {
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'User-Agent': 'PolyHub/1.0',
       },
-      signal: AbortSignal.timeout(10000)
+      signal: AbortSignal.timeout(10000),
     })
 
     if (!response.ok) {
@@ -170,9 +240,9 @@ export async function GET(request: NextRequest) {
 
     // Transform all markets
     const allMarkets = data
-      .filter(market => !market.closed && market.active !== false)
+      .filter((market: PolymarketMarket) => !market.closed && market.active !== false)
       .map(transformMarket)
-      .filter(market => market && market.totalVolume >= 0)
+      .filter((market: Market) => market && market.totalVolume >= 0) // Valid markets only
 
     console.log(`Successfully transformed ${allMarkets.length} markets`)
 
@@ -182,15 +252,15 @@ export async function GET(request: NextRequest) {
     switch (type) {
       case 'featured':
         markets = allMarkets
-          .filter(m => m.totalVolume > 5000 && m.liquidity > 1000)
+          .filter((m) => m.totalVolume > 5000 && m.liquidity > 1000)
           .slice(0, 6)
-          .map(m => ({ ...m, featured: true }))
+          .map((m) => ({ ...m, featured: true }))
         break
       case 'trending':
         markets = allMarkets
-          .filter(m => m.totalVolume > 1000)
+          .filter((m) => m.totalVolume > 1000)
           .slice(0, 8)
-          .map(m => ({ ...m, trending: true }))
+          .map((m) => ({ ...m, trending: true }))
         break
       default:
         markets = allMarkets.slice(0, limit)
@@ -203,18 +273,25 @@ export async function GET(request: NextRequest) {
       data: markets,
       count: markets.length,
       timestamp: new Date().toISOString(),
-      source: 'polymarket-gamma-api'
+      source: 'polymarket-gamma-api',
     })
-
   } catch (error) {
     console.error('API error:', error)
 
+    // Minimal fallback with one current market
     const fallbackMarkets: Market[] = [
       {
         id: 'fallback-jerome-powell',
         question: 'Jerome Powell out as Fed Chair in 2025?',
         description: 'Will Jerome Powell cease to be the Chair of the U.S. Federal Reserve in 2025?',
-        category: { id: 'politics', name: 'Politics', slug: 'politics', description: 'Elections and political events', color: '#3B82F6', icon: 'Vote' },
+        category: {
+          id: 'politics',
+          name: 'Politics',
+          slug: 'politics',
+          description: 'Elections and political events',
+          color: '#3B82F6',
+          icon: 'Vote',
+        },
         outcomes: [
           { id: 'yes', name: 'Yes', price: 0.05, probability: 0.05, volume24h: 45000, priceChange24h: 0.01 },
           { id: 'no', name: 'No', price: 0.95, probability: 0.95, volume24h: 185000, priceChange24h: -0.01 },
@@ -232,19 +309,26 @@ export async function GET(request: NextRequest) {
         minPrice: 0.01,
         maxPrice: 0.99,
         currentPrices: { yes: 0.05, no: 0.95 },
-      }
+      },
     ]
 
-    const markets = type === 'featured' ? fallbackMarkets.slice(0, 6).map(m => ({...m, featured: true})) : 
-                   type === 'trending' ? fallbackMarkets.slice(0, 8).map(m => ({...m, trending: true})) : 
-                   fallbackMarkets.slice(0, limit)
+    const { searchParams } = new URL(request.url)
+    const type = searchParams.get('type')
+    const limit = parseInt(searchParams.get('limit') || '50')
+
+    const markets =
+      type === 'featured'
+        ? fallbackMarkets.slice(0, 6).map((m) => ({ ...m, featured: true }))
+        : type === 'trending'
+        ? fallbackMarkets.slice(0, 8).map((m) => ({ ...m, trending: true }))
+        : fallbackMarkets.slice(0, limit)
 
     return NextResponse.json({
       success: true,
       data: markets,
       count: markets.length,
       timestamp: new Date().toISOString(),
-      source: 'fallback'
+      source: 'fallback',
     })
   }
 }
