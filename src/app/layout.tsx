@@ -11,18 +11,18 @@ export const metadata: Metadata = {
     template: '%s | PolyHub',
     default: 'PolyHub - Prediction Markets Platform',
   },
-  description: 'The ultimate prediction markets platform. Trade on real-world events, connect with fellow predictors, and showcase your forecasting skills.',
+  description: 'The ultimate prediction markets information hub. Monitor real-world events, track forecasting trends, and connect with fellow predictors.',
   keywords: ['prediction markets', 'trading', 'forecasting', 'polymarket', 'betting'],
   authors: [{ name: 'PolyHub Team' }],
   creator: 'PolyHub',
-  metadataBase: new URL('https://polyhub.vercel.app'),
+  metadataBase: new URL('https://polyhub.app/'),
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://polyhub.vercel.app',
+    url: 'https://polyhub.app/',
     siteName: 'PolyHub',
     title: 'PolyHub - Prediction Markets Platform',
-    description: 'The ultimate prediction markets platform. Trade on real-world events, connect with fellow predictors, and showcase your forecasting skills.',
+    description: 'The ultimate prediction markets information hub. Monitor real-world events, track forecasting trends, and connect with fellow predictors.',
     images: [
       {
         url: '/og-image.png',
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'PolyHub - Prediction Markets Platform',
-    description: 'The ultimate prediction markets platform. Trade on real-world events, connect with fellow predictors, and showcase your forecasting skills.',
+    description: 'The ultimate prediction markets information hub. Monitor real-world events, track forecasting trends, and connect with fellow predictors.',
     images: ['/og-image.png'],
     creator: '@polyhub',
   },
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     google: 'your-google-verification-code',
   },
   alternates: {
-    canonical: 'https://polyhub.vercel.app',
+    canonical: 'https://polyhub.app/',
   },
 }
 
@@ -66,7 +66,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/icon.ico" />
+        <link rel="icon" href="/logo.ico" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
