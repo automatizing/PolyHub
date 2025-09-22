@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import Link from 'next/link'
 import { 
   Shield, 
   Users, 
@@ -94,14 +95,16 @@ export default function AboutPage() {
             researchers, and forecasters to predict real-world events with unprecedented accuracy and transparency.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" asChild>
-              <a href="/markets">Start Trading</a>
-            </Button>
-            <Button size="lg" variant="outline" asChild>
-              <a href="mailto:hello@polyhub.com">
+            <Link href="/markets">
+              <Button size="lg">
+                Start Trading
+              </Button>
+            </Link>
+            <Link href="mailto:hello@polyhub.com">
+              <Button size="lg" variant="outline">
                 Contact Us
-              </a>
-            </Button>
+              </Button>
+            </Link>
           </div>
         </div>
 
@@ -268,16 +271,16 @@ export default function AboutPage() {
                 of markets from multiple platforms and stay informed about market trends.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button size="lg" variant="secondary" asChild>
-                  <a href="/markets">
+                <Link href="/markets">
+                  <Button size="lg" variant="secondary">
                     Browse Markets
-                  </a>
-                </Button>
-                <Button size="lg" variant="secondary" asChild>
-                  <a href="mailto:hello@polyhub.com">
+                  </Button>
+                </Link>
+                <Link href="mailto:hello@polyhub.com">
+                  <Button size="lg" variant="secondary">
                     Contact Us
-                  </a>
-                </Button>
+                  </Button>
+                </Link>
               </div>
             </CardContent>
           </Card>
