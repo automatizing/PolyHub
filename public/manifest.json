@@ -1,0 +1,17 @@
+{
+  "name": "PolyHub - Prediction Markets Platform",
+  "short_name": "PolyHub",
+  "description": "The ultimate prediction markets platform for trading on real-world events",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3B82F6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ]
+}
