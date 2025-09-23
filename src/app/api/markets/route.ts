@@ -1,9 +1,30 @@
 // app/api/markets/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { Market, MarketCategory } from '@/types'
+import type { Market, MarketCategory } from '@/types'
 
-// Local outcome type for parsed markets
-interface Outcome {
+// --------------- Tunables ---------------
+// Cache
+const CACHE_DURATION_MS = 60 * 1000
+
+// Fetch sizing (balanced to get >= limit without hammering API)
+const EVENTS_PAGE_SIZE = 100               // one page is usually enough
+const EVENT_DETAIL_LIMIT = 40              // at most this many event-detail fetches
+const MARKETS_PAGE_SIZE = 100              // page size for markets
+const MARKETS_MAX_PAGES = 5                // safety cap (100 * 5 = 500)
+// Delay between batches to be polite to upstream
+const REQUEST_DELAY_MS = 150
+
+// --------------- Cache ---------------
+let marketCache:
+  | {
+      data: Market[]
+      timestamp: number
+      key: string
+    }
+  | null = null
+
+// --------------- Upstream payload shapes (subset) ---------------
+type MarketOutcome = {
   id: string
   name: string
   price: number
@@ -12,68 +33,87 @@ interface Outcome {
   priceChange24h: number
 }
 
-// Polymarket Event type
-interface PolymarketEvent {
-  id: string
-  title: string
-  slug: string
-  description?: string
-  startDate: string
-  endDate: string
-  active: boolean
-  closed: boolean
-  featured?: boolean
-  new?: boolean
-  volume?: number
-  volume24hr?: number
-  liquidity?: number
-  openInterest?: number
-  markets?: PolymarketMarket[]
-  tags?: Array<{ label: string; slug: string }>
-  categories?: Array<{ label: string; slug: string }>
-  createdAt: string
-}
-
-// Simple Polymarket API types based on actual response
-interface PolymarketMarket {
+type PolymarketMarket = {
   id: string
   question: string
   description?: string
-  outcomes: string
-  outcomePrices: string
-  volume: string
+  outcomes: string // JSON string array
+  outcomePrices: string // JSON string array of numbers
+  volume?: string
   volumeNum?: number
-  liquidity: string
+  liquidity?: string
   liquidityNum?: number
   volume24hr?: number
-  endDate: string
-  startDate: string
-  active: boolean
-  closed: boolean
+  endDate?: string
+  startDate?: string
+  active?: boolean
+  closed?: boolean
   featured?: boolean
   new?: boolean
   tags?: Array<{ label: string; slug: string }>
   categories?: Array<{ label: string; slug: string }>
-  createdAt: string
+  createdAt?: string
+  // present on /markets items, helps skip duplicates with events
   events?: Array<{ id: string; title: string; slug: string }>
 }
 
-// Parse outcomes and prices from API strings
-function parseOutcomesAndPrices(outcomes: string, outcomePrices: string): Outcome[] {
-  try {
-    const outcomeArray = JSON.parse(outcomes || '["Yes", "No"]')
-    const priceArray = JSON.parse(outcomePrices || '[0.5, 0.5]')
+type PolymarketEvent = {
+  id: string
+  title: string
+  slug?: string
+  description?: string
+  active?: boolean
+  closed?: boolean
+  volume?: number
+  volume24hr?: number
+  liquidity?: number
+  createdAt?: string
+  endDate?: string
+  // only on event detail:
+  markets?: Array<
+    Pick<
+      PolymarketMarket,
+      | 'id'
+      | 'question'
+      | 'description'
+      | 'outcomes'
+      | 'outcomePrices'
+      | 'volume'
+      | 'volumeNum'
+      | 'liquidity'
+      | 'liquidityNum'
+      | 'volume24hr'
+      | 'endDate'
+      | 'startDate'
+      | 'active'
+      | 'closed'
+      | 'createdAt'
+    >
+  >
+  tags?: Array<{ label: string; slug: string }>
+  categories?: Array<{ label: string; slug: string }>
+}
 
-    return outcomeArray.map((name: string, index: number) => ({
-      id: name.toLowerCase().replace(/\s+/g, '_'),
-      name: name,
-      price: parseFloat(priceArray[index]) || 0.5,
-      probability: parseFloat(priceArray[index]) || 0.5,
-      volume24h: 0, // Will be calculated from market volume
-      priceChange24h: (Math.random() - 0.5) * 0.1,
-    }))
-  } catch (_error) {
-    // Fallback to binary outcomes
+// --------------- Helpers ---------------
+const delay = (ms: number) => new Promise((res) => setTimeout(res, ms))
+
+function parseOutcomesAndPrices(outcomes: string, outcomePrices: string): MarketOutcome[] {
+  try {
+    const names: string[] = JSON.parse(outcomes || '["Yes","No"]')
+    const prices: number[] = JSON.parse(outcomePrices || '[0.5,0.5]')
+    return names.map((name, i) => {
+      const p = Number(prices[i] ?? 0.5) || 0.5
+      return {
+        id: name.toLowerCase().replace(/\s+/g, '_'),
+        name,
+        price: p,
+        probability: p,
+        volume24h: 0,
+        priceChange24h: (Math.random() - 0.5) * 0.1,
+      }
+    })
+  } catch {
+    // binary fallback
     return [
       { id: 'yes', name: 'Yes', price: 0.5, probability: 0.5, volume24h: 0, priceChange24h: 0 },
       { id: 'no', name: 'No', price: 0.5, probability: 0.5, volume24h: 0, priceChange24h: 0 },
@@ -81,494 +121,308 @@ function parseOutcomesAndPrices(outcomes: string, outcomePrices: string): Outcom
   }
 }
 
-// Get category from tags and categories
-function getCategoryFromMarket(market: PolymarketMarket | PolymarketEvent): MarketCategory {
-  const tags = market.tags?.map((t) => t.label.toLowerCase()) || []
-  const categories = market.categories?.map((c) => c.label.toLowerCase()) || []
-  const allLabels = [...tags, ...categories]
-  const title = ('question' in market ? market.question : market.title).toLowerCase()
+function getCategoryFromLabels(title: string, labels: string[]): MarketCategory {
+  const t = title.toLowerCase()
+  const has = (arr: string[]) => arr.some((v) => labels.includes(v))
 
-  if (
-    allLabels.some((label) => ['politics', 'election', 'government'].includes(label)) ||
-    title.includes('election') ||
-    title.includes('president') ||
-    title.includes('trump') ||
-    title.includes('powell') ||
-    title.includes('fed')
-  ) {
-    return {
-      id: 'politics',
-      name: 'Politics',
-      slug: 'politics',
-      description: 'Elections and political events',
-      color: '#3B82F6',
-      icon: 'Vote',
-    }
+  if (has(['politics', 'election']) || /president|election|primary|senate|vote/.test(t)) {
+    return { id: 'politics', name: 'Politics', slug: 'politics', description: 'Elections and political events', color: '#3B82F6', icon: 'Vote' } as MarketCategory
   }
-
-  if (
-    allLabels.some((label) => ['sports', 'nfl', 'nba'].includes(label)) ||
-    title.includes('sport') ||
-    title.includes('super bowl') ||
-    title.includes('nfl')
-  ) {
-    return {
-      id: 'sports',
-      name: 'Sports',
-      slug: 'sports',
-      description: 'Sports predictions and outcomes',
-      color: '#EF4444',
-      icon: 'Trophy',
-    }
+  if (has(['sports', 'nfl', 'nba']) || /sport|super bowl|nfl|nba|mlb|nhl/.test(t)) {
+    return { id: 'sports', name: 'Sports', slug: 'sports', description: 'Sports predictions and outcomes', color: '#EF4444', icon: 'Trophy' } as MarketCategory
   }
-
-  if (
-    allLabels.some((label) => ['crypto', 'bitcoin', 'ethereum'].includes(label)) ||
-    title.includes('bitcoin') ||
-    title.includes('crypto')
-  ) {
-    return {
-      id: 'crypto',
-      name: 'Crypto',
-      slug: 'crypto',
-      description: 'Cryptocurrency and blockchain',
-      color: '#F59E0B',
-      icon: 'Coins',
-    }
+  if (has(['crypto', 'bitcoin', 'ethereum']) || /bitcoin|crypto|eth|btc/.test(t)) {
+    return { id: 'crypto', name: 'Crypto', slug: 'crypto', description: 'Cryptocurrency and blockchain', color: '#F59E0B', icon: 'Coins' } as MarketCategory
   }
-
-  if (
-    allLabels.some((label) => ['business', 'stock', 'economy'].includes(label)) ||
-    title.includes('stock') ||
-    title.includes('fed')
-  ) {
-    return {
-      id: 'business',
-      name: 'Business',
-      slug: 'business',
-      description: 'Corporate and economic events',
-      color: '#10B981',
-      icon: 'Building',
-    }
+  if (has(['business', 'economy']) || /fed|gdp|inflation|stocks|nasdaq|recession/.test(t)) {
+    return { id: 'business', name: 'Business', slug: 'business', description: 'Corporate and economic events', color: '#10B981', icon: 'Building' } as MarketCategory
   }
-
-  if (
-    allLabels.some((label) => ['technology', 'tech'].includes(label)) ||
-    title.includes('tiktok') ||
-    title.includes('tech')
-  ) {
-    return {
-      id: 'technology',
-      name: 'Technology',
-      slug: 'technology',
-      description: 'Tech developments and releases',
-      color: '#8B5CF6',
-      icon: 'Cpu',
-    }
+  if (has(['technology', 'tech']) || /ai|tech|tiktok|google|microsoft|openai/.test(t)) {
+    return { id: 'technology', name: 'Technology', slug: 'technology', description: 'Technology and innovation', color: '#8B5CF6', icon: 'Cpu' } as MarketCategory
   }
-
-  if (title.includes('taylor swift') || title.includes('celebrity')) {
-    return {
-      id: 'entertainment',
-      name: 'Entertainment',
-      slug: 'entertainment',
-      description: 'Movies, TV, and celebrity events',
-      color: '#F97316',
-      icon: 'Film',
-    }
-  }
-
-  return {
-    id: 'other',
-    name: 'Other',
-    slug: 'other',
-    description: 'Miscellaneous predictions',
-    color: '#6B7280',
-    icon: 'HelpCircle',
-  }
+  return { id: 'world', name: 'World', slug: 'world', description: 'Global news and events', color: '#6B7280', icon: 'Globe' } as MarketCategory
 }
 
-// Transform Polymarket market data to our format
-function transformMarket(market: PolymarketMarket): Market {
-  const category = getCategoryFromMarket(market)
-  const outcomes = parseOutcomesAndPrices(market.outcomes, market.outcomePrices)
-
-  // Distribute volume among outcomes
-  const volume24h = market.volume24hr || 0
-  outcomes.forEach((outcome: Outcome) => {
-    outcome.volume24h = volume24h / outcomes.length
-  })
+function transformMarket(m: PolymarketMarket): Market {
+  const labels = [
+    ...(m.tags?.map((t) => t.label.toLowerCase()) ?? []),
+    ...(m.categories?.map((c) => c.label.toLowerCase()) ?? []),
+  ]
+  const category = getCategoryFromLabels(m.question, labels)
+  const outcomes = parseOutcomesAndPrices(m.outcomes, m.outcomePrices)
+  const vol24 = m.volume24hr || 0
+  outcomes.forEach((o) => (o.volume24h = vol24 / (outcomes.length || 1)))
 
   return {
-    id: market.id,
-    question: market.question,
-    description: market.description || market.question,
+    id: m.id,
+    question: m.question,
+    description: m.description || m.question,
     category,
     outcomes,
-    liquidity: market.liquidityNum || parseFloat(market.liquidity || '0'),
-    totalVolume: market.volumeNum || parseFloat(market.volume || '0'),
-    createdAt: market.createdAt,
-    closingTime: market.endDate,
-    resolved: market.closed,
-    featured: market.featured || false,
-    trending: market.new || false,
-    tags: market.tags?.map((t) => t.label) || [],
+    liquidity: m.liquidityNum ?? Number(m.liquidity ?? 0),
+    totalVolume: m.volumeNum ?? Number(m.volume ?? 0),
+    createdAt: m.createdAt,
+    closingTime: m.endDate,
+    resolved: !!m.closed,
+    featured: m.featured ?? false,
+    trending: m.new ?? false,
+    tags: m.tags?.map((t) => t.label) ?? [],
     creator: 'Polymarket',
     rules: 'Market resolves based on Polymarket resolution criteria.',
     minPrice: 0.01,
     maxPrice: 0.99,
-    currentPrices: outcomes.reduce((acc, outcome) => {
-      acc[outcome.id] = outcome.price
+    currentPrices: outcomes.reduce<Record<string, number>>((acc, o) => {
+      acc[o.id] = o.price
       return acc
-    }, {} as Record<string, number>),
-  }
+    }, {}),
+  } as unknown as Market
 }
 
-// Transform Event data to Market format (using the highest volume market within the event)
-function transformEventToMarket(event: PolymarketEvent): Market | null {
-  if (!event.markets || event.markets.length === 0) {
-    return null
+function transformEventToMarket(e: PolymarketEvent): Market {
+  const labels = [
+    ...(e.tags?.map((t) => t.label.toLowerCase()) ?? []),
+    ...(e.categories?.map((c) => c.label.toLowerCase()) ?? []),
+  ]
+  const category = getCategoryFromLabels(e.title, labels)
+
+  // Base outcomes: try to infer from first event market if present, otherwise binary fallback
+  let outcomes: MarketOutcome[] = [
+    { id: 'yes', name: 'Yes', price: 0.5, probability: 0.5, volume24h: 0, priceChange24h: 0 },
+    { id: 'no', name: 'No', price: 0.5, probability: 0.5, volume24h: 0, priceChange24h: 0 },
+  ]
+  if (Array.isArray(e.markets) && e.markets.length) {
+    // pick highest volume sub-market
+    const primary = e.markets.reduce((hi, cur) => {
+      const cv = cur.volumeNum ?? Number(cur.volume ?? 0)
+      const hv = hi.volumeNum ?? Number(hi.volume ?? 0)
+      return cv > hv ? cur : hi
+    })
+    outcomes = parseOutcomesAndPrices(primary.outcomes, primary.outcomePrices)
+    const vol24 = e.volume24hr || 0
+    outcomes.forEach((o) => (o.volume24h = vol24 / (outcomes.length || 1)))
   }
 
-  // Find the highest volume market in the event, or use the first one
-  const primaryMarket = event.markets.reduce((highest, current) => {
-    const currentVolume = current.volumeNum || parseFloat(current.volume || '0')
-    const highestVolume = highest.volumeNum || parseFloat(highest.volume || '0')
-    return currentVolume > highestVolume ? current : highest
-  })
+  const totalEventVolume =
+    e.volume ??
+    (Array.isArray(e.markets)
+      ? e.markets.reduce((sum, m) => sum + (m.volumeNum ?? Number(m.volume ?? 0)), 0)
+      : 0)
 
-  const category = getCategoryFromMarket(event)
-  const outcomes = parseOutcomesAndPrices(primaryMarket.outcomes, primaryMarket.outcomePrices)
-
-  // Calculate total event volume and liquidity
-  const totalEventVolume = event.volume || event.markets.reduce((sum, market) => {
-    return sum + (market.volumeNum || parseFloat(market.volume || '0'))
-  }, 0)
-
-  const totalEventLiquidity = event.liquidity || event.markets.reduce((sum, market) => {
-    return sum + (market.liquidityNum || parseFloat(market.liquidity || '0'))
-  }, 0)
-
-  const volume24h = event.volume24hr || 0
-  outcomes.forEach((outcome: Outcome) => {
-    outcome.volume24h = volume24h / outcomes.length
-  })
+  const totalEventLiquidity =
+    e.liquidity ??
+    (Array.isArray(e.markets)
+      ? e.markets.reduce((sum, m) => sum + (m.liquidityNum ?? Number(m.liquidity ?? 0)), 0)
+      : 0)
 
   return {
-    id: `event-${event.id}`,
-    question: event.title,
-    description: event.description || `${event.title} - Event with ${event.markets.length} related markets`,
+    id: `event-${e.id}`,
+    question: e.title,
+    description: e.description || e.title,
     category,
     outcomes,
-    liquidity: totalEventLiquidity,
-    totalVolume: totalEventVolume,
-    createdAt: event.createdAt,
-    closingTime: event.endDate,
-    resolved: event.closed,
-    featured: event.featured || false,
-    trending: event.new || false,
-    tags: [...(event.tags?.map((t) => t.label) || []), 'Event'],
+    liquidity: totalEventLiquidity || 0,
+    totalVolume: totalEventVolume || 0,
+    createdAt: e.createdAt,
+    closingTime: e.endDate,
+    resolved: !!e.closed,
+    featured: false,
+    trending: false,
+    tags: e.tags?.map((t) => t.label) ?? [],
     creator: 'Polymarket',
-    rules: `Event with ${event.markets.length} related markets. Market resolves based on Polymarket resolution criteria.`,
+    rules: 'Aggregated event composed of related markets on Polymarket.',
     minPrice: 0.01,
     maxPrice: 0.99,
-    currentPrices: outcomes.reduce((acc, outcome) => {
-      acc[outcome.id] = outcome.price
+    currentPrices: outcomes.reduce<Record<string, number>>((acc, o) => {
+      acc[o.id] = o.price
       return acc
-    }, {} as Record<string, number>),
+    }, {}),
+  } as unknown as Market
+}
+
+// --------------- Fetchers ---------------
+async function fetchWithRetry(url: string, init: RequestInit, retries = 2): Promise<Response> {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const res = await fetch(url, init)
+      if (res.ok) return res
+      if (res.status === 429) {
+        // back off politely
+        await delay((i + 1) * 500)
+        continue
+      }
+      if (i === retries) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+    } catch (err) {
+      if (i === retries) throw err
+      await delay((i + 1) * 500)
+    }
+  }
+  // Should never reach here
+  // @ts-expect-error
+  return new Response(null, { status: 500 })
+}
+
+async function fetchEventsPage(limit: number, offset: number): Promise<PolymarketEvent[]> {
+  const url = `https://gamma-api.polymarket.com/events?limit=${limit}&offset=${offset}&closed=false&order=volume&ascending=false&related_tags=true`
+  const res = await fetchWithRetry(
+    url,
+    { headers: { Accept: 'application/json', 'User-Agent': 'PolyHub/1.0' }, signal: AbortSignal.timeout(8000) },
+    2,
+  )
+  if (!res.ok) throw new Error(`Events HTTP ${res.status}`)
+  return (await res.json()) as PolymarketEvent[]
+}
+
+async function fetchEventDetail(eventId: string): Promise<PolymarketEvent | null> {
+  try {
+    const r = await fetchWithRetry(
+      `https://gamma-api.polymarket.com/events/${eventId}`,
+      { headers: { Accept: 'application/json', 'User-Agent': 'PolyHub/1.0' }, signal: AbortSignal.timeout(8000) },
+      2,
+    )
+    if (!r.ok) return null
+    return (await r.json()) as PolymarketEvent
+  } catch {
+    return null
   }
 }
 
-// Fetch events with markets included
-async function fetchEvents(limit: number = 50): Promise<PolymarketEvent[]> {
-  const apiUrl = `https://gamma-api.polymarket.com/events?limit=${limit}&closed=false&order=volume&ascending=false&related_tags=true`
-  
-  console.log(`Fetching events: ${apiUrl}`)
-  
-  const response = await fetch(apiUrl, {
-    headers: {
-      Accept: 'application/json',
-      'User-Agent': 'PolyHub/1.0',
-    },
-    signal: AbortSignal.timeout(10000),
-  })
-
-  if (!response.ok) {
-    throw new Error(`Events API error: ${response.status} - ${response.statusText}`)
-  }
-
-  return await response.json()
+async function fetchMarketsPage(limit: number, offset: number): Promise<PolymarketMarket[]> {
+  const url = `https://gamma-api.polymarket.com/markets?limit=${limit}&offset=${offset}&closed=false&order=volumeNum&ascending=false&include_tag=true&related_tags=true`
+  const res = await fetchWithRetry(
+    url,
+    { headers: { Accept: 'application/json', 'User-Agent': 'PolyHub/1.0' }, signal: AbortSignal.timeout(8000) },
+    2,
+  )
+  if (!res.ok) throw new Error(`Markets HTTP ${res.status}`)
+  return (await res.json()) as PolymarketMarket[]
 }
 
-// Fetch individual markets
-async function fetchMarkets(limit: number = 100): Promise<PolymarketMarket[]> {
-  const apiUrl = `https://gamma-api.polymarket.com/markets?limit=${limit}&closed=false&order=volumeNum&ascending=false&include_tag=true`
-  
-  console.log(`Fetching markets: ${apiUrl}`)
-  
-  const response = await fetch(apiUrl, {
-    headers: {
-      Accept: 'application/json',
-      'User-Agent': 'PolyHub/1.0',
-    },
-    signal: AbortSignal.timeout(10000),
-  })
-
-  if (!response.ok) {
-    throw new Error(`Markets API error: ${response.status} - ${response.statusText}`)
-  }
-
-  return await response.json()
-}
-
-// Generate fallback markets only when needed
-function generateFallbackMarkets(): Market[] {
-  return [
-    {
-      id: 'fallback-election-2024',
-      question: '2024 Presidential Election Winner',
-      description: 'Who will win the 2024 U.S. Presidential Election?',
-      category: {
-        id: 'politics',
-        name: 'Politics',
-        slug: 'politics',
-        description: 'Elections and political events',
-        color: '#3B82F6',
-        icon: 'Vote',
-      },
-      outcomes: [
-        { id: 'trump', name: 'Trump', price: 0.52, probability: 0.52, volume24h: 2100000, priceChange24h: 0.03 },
-        { id: 'harris', name: 'Harris', price: 0.48, probability: 0.48, volume24h: 1900000, priceChange24h: -0.03 },
-      ],
-      liquidity: 8500000,
-      totalVolume: 84000000,
-      createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
-      closingTime: new Date('2024-11-06T00:00:00Z').toISOString(),
-      resolved: false,
-      featured: true,
-      trending: true,
-      tags: ['2024 election', 'president'],
-      creator: 'Polymarket',
-      rules: 'Market resolves based on official election results.',
-      minPrice: 0.01,
-      maxPrice: 0.99,
-      currentPrices: { trump: 0.52, harris: 0.48 },
-    },
-    {
-      id: 'fallback-bitcoin-100k',
-      question: 'Bitcoin above $100k by EOY 2024?',
-      description: 'Will Bitcoin reach $100,000 before January 1, 2025?',
-      category: {
-        id: 'crypto',
-        name: 'Crypto',
-        slug: 'crypto',
-        description: 'Cryptocurrency and blockchain',
-        color: '#F59E0B',
-        icon: 'Coins',
-      },
-      outcomes: [
-        { id: 'yes', name: 'Yes', price: 0.35, probability: 0.35, volume24h: 450000, priceChange24h: 0.05 },
-        { id: 'no', name: 'No', price: 0.65, probability: 0.65, volume24h: 550000, priceChange24h: -0.05 },
-      ],
-      liquidity: 2500000,
-      totalVolume: 12000000,
-      createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
-      closingTime: new Date('2024-12-31T23:59:59Z').toISOString(),
-      resolved: false,
-      featured: true,
-      trending: false,
-      tags: ['bitcoin', 'crypto', 'price'],
-      creator: 'Polymarket',
-      rules: 'Market resolves YES if Bitcoin trades above $100,000 on any major exchange before 2025.',
-      minPrice: 0.01,
-      maxPrice: 0.99,
-      currentPrices: { yes: 0.35, no: 0.65 },
-    },
-    {
-      id: 'fallback-super-bowl',
-      question: 'Super Bowl 2025 Winner',
-      description: 'Which team will win Super Bowl LIX?',
-      category: {
-        id: 'sports',
-        name: 'Sports',
-        slug: 'sports',
-        description: 'Sports predictions and outcomes',
-        color: '#EF4444',
-        icon: 'Trophy',
-      },
-      outcomes: [
-        { id: 'chiefs', name: 'Chiefs', price: 0.18, probability: 0.18, volume24h: 80000, priceChange24h: 0.02 },
-        { id: '49ers', name: '49ers', price: 0.15, probability: 0.15, volume24h: 70000, priceChange24h: -0.01 },
-        { id: 'eagles', name: 'Eagles', price: 0.12, probability: 0.12, volume24h: 60000, priceChange24h: 0.01 },
-        { id: 'other', name: 'Other', price: 0.55, probability: 0.55, volume24h: 190000, priceChange24h: -0.02 },
-      ],
-      liquidity: 1800000,
-      totalVolume: 8500000,
-      createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-      closingTime: new Date('2025-02-09T23:00:00Z').toISOString(),
-      resolved: false,
-      featured: false,
-      trending: true,
-      tags: ['nfl', 'super bowl', 'football'],
-      creator: 'Polymarket',
-      rules: 'Market resolves to the team that wins Super Bowl LIX.',
-      minPrice: 0.01,
-      maxPrice: 0.99,
-      currentPrices: { chiefs: 0.18, '49ers': 0.15, eagles: 0.12, other: 0.55 },
-    },
-  ]
-}
-
+// --------------- GET handler ---------------
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const type = searchParams.get('type')
-    const limit = parseInt(searchParams.get('limit') || '50')
+    const type = searchParams.get('type') // featured | trending | null
+    const target = Math.max(1, Math.min(300, parseInt(searchParams.get('limit') || '100')))
+    const forceRefresh = searchParams.get('refresh') === 'true'
 
-    console.log(`Fetching ${type || 'all'} markets and events from Gamma API`)
-
-    // Fetch both events and individual markets
-    const [eventsData, marketsData] = await Promise.allSettled([
-      fetchEvents(50),
-      fetchMarkets(100)
-    ])
-
-    let allMarkets: Market[] = []
-    let apiCallsSucceeded = false
-
-    // Process events (these often have the highest volumes)
-    if (eventsData.status === 'fulfilled' && Array.isArray(eventsData.value)) {
-      console.log(`Processing ${eventsData.value.length} events`)
-      apiCallsSucceeded = true
-      
-      for (const event of eventsData.value) {
-        if (!event.closed && event.active !== false) {
-          // Fetch detailed event with markets
-          try {
-            const eventDetailUrl = `https://gamma-api.polymarket.com/events/${event.id}`
-            const eventDetailResponse = await fetch(eventDetailUrl, {
-              headers: { Accept: 'application/json', 'User-Agent': 'PolyHub/1.0' },
-              signal: AbortSignal.timeout(5000),
-            })
-            
-            if (eventDetailResponse.ok) {
-              const detailedEvent = await eventDetailResponse.json()
-              if (detailedEvent.markets && detailedEvent.markets.length > 0) {
-                const eventMarket = transformEventToMarket(detailedEvent)
-                if (eventMarket) {
-                  allMarkets.push(eventMarket)
-                }
-              }
-            }
-          } catch (error) {
-            console.log(`Failed to fetch event details for ${event.id}:`, error)
-          }
-        }
-      }
-    } else {
-      console.log('Failed to fetch events:', eventsData.status === 'rejected' ? eventsData.reason : 'No data')
-    }
-
-    // Process individual markets
-    if (marketsData.status === 'fulfilled' && Array.isArray(marketsData.value)) {
-      console.log(`Processing ${marketsData.value.length} individual markets`)
-      apiCallsSucceeded = true
-      
-      const individualMarkets = marketsData.value
-        .filter((market: PolymarketMarket) => !market.closed && market.active !== false)
-        .map(transformMarket)
-        .filter((market: Market) => market && market.totalVolume >= 0)
-
-      allMarkets = [...allMarkets, ...individualMarkets]
-    } else {
-      console.log('Failed to fetch markets:', marketsData.status === 'rejected' ? marketsData.reason : 'No data')
-    }
-
-    // Check if we actually got any markets from the API
-    if (!apiCallsSucceeded || allMarkets.length === 0) {
-      // Only use fallback if API completely failed
-      console.log('API calls failed or returned no data, using fallback markets')
-      
-      const fallbackMarkets = generateFallbackMarkets()
-      const markets = type === 'featured'
-        ? fallbackMarkets.filter(m => m.featured).slice(0, 6)
-        : type === 'trending'
-        ? fallbackMarkets.filter(m => m.trending).slice(0, 8)
-        : fallbackMarkets.slice(0, limit)
-
+    const cacheKey = `${type || 'all'}:${target}`
+    if (!forceRefresh && marketCache && Date.now() - marketCache.timestamp < CACHE_DURATION_MS && marketCache.key === cacheKey) {
+      let data = filterByType(marketCache.data, type, target)
       return NextResponse.json({
         success: true,
-        data: markets,
-        count: markets.length,
+        data,
+        count: data.length,
         timestamp: new Date().toISOString(),
-        source: 'fallback',
-        warning: 'Using fallback data due to API failure'
+        source: 'cache',
+        cached: true,
       })
     }
 
-    // Remove duplicates and sort by total volume (events + markets combined)
-    const uniqueMarkets = Array.from(
-      new Map(allMarkets.map(market => [market.id, market])).values()
-    ).sort((a, b) => b.totalVolume - a.totalVolume)
+    // ---- 1) EVENTS (single page, then optional detail for top-N) ----
+    const events = await fetchEventsPage(EVENTS_PAGE_SIZE, 0)
+    const activeEvents = events.filter((e) => !e.closed && e.active !== false)
 
-    console.log(`Successfully processed ${uniqueMarkets.length} total markets from API`)
+    // fetch limited details (to get embedded markets/outcomes where possible)
+    const detailTargets = activeEvents.slice(0, EVENT_DETAIL_LIMIT)
+    const [detailed, rest] = await Promise.all([
+      Promise.all(detailTargets.map((e) => fetchEventDetail(e.id))),
+      Promise.resolve(activeEvents.slice(EVENT_DETAIL_LIMIT)),
+    ])
 
-    // Filter and limit based on request type
-    let markets: Market[] = []
+    const enrichedEvents: PolymarketEvent[] = [
+      ...detailed.map((d, i) => d || detailTargets[i]),
+      ...rest,
+    ]
 
-    switch (type) {
-      case 'featured':
-        markets = uniqueMarkets
-          .filter((m) => m.totalVolume > 5000 && m.liquidity > 1000)
-          .slice(0, 6)
-          .map((m) => ({ ...m, featured: true }))
-        break
-      case 'trending':
-        markets = uniqueMarkets
-          .filter((m) => m.totalVolume > 1000)
-          .slice(0, 8)
-          .map((m) => ({ ...m, trending: true }))
-        break
-      default:
-        markets = uniqueMarkets.slice(0, limit)
+    // Build one aggregated item per event
+    const eventMarkets: Market[] = []
+    const includedEventIds = new Set<string>()
+    for (const e of enrichedEvents) {
+      const mk = transformEventToMarket(e)
+      eventMarkets.push(mk)
+      includedEventIds.add(e.id)
     }
 
-    console.log(`Returning ${markets.length} ${type || 'total'} markets from API`)
-    console.log('Top 3 markets by volume:', markets.slice(0, 3).map(m => ({ 
-      question: m.question, 
-      volume: m.totalVolume,
-      isEvent: m.id.startsWith('event-')
-    })))
+    // ---- 2) MARKETS (paged until we hit target) ----
+    const marketsCollected: Market[] = []
+    let page = 0
+    while (marketsCollected.length < target && page < MARKETS_MAX_PAGES) {
+      const offset = page * MARKETS_PAGE_SIZE
+      const pageItems = await fetchMarketsPage(MARKETS_PAGE_SIZE, offset)
+
+      // filter & skip any markets that belong to events we've already included
+      const filtered = pageItems
+        .filter((m) => !m.closed && m.active !== false)
+        .filter((m) => !(m.events || []).some((ev) => includedEventIds.has(ev.id)))
+
+      marketsCollected.push(...filtered.map(transformMarket))
+      page += 1
+
+      if (page < MARKETS_MAX_PAGES) await delay(REQUEST_DELAY_MS)
+    }
+
+    // ---- 3) Merge + sort by volume ----
+    // No global "same question" de-dupe here to maximize distinct offers;
+    // we already skipped event↔market overlaps above.
+    const merged = [...eventMarkets, ...marketsCollected]
+      .sort((a, b) => (b.totalVolume ?? 0) - (a.totalVolume ?? 0))
+
+    // Cache the full merged set (keep more than target so filtering can reuse)
+    marketCache = { data: merged, timestamp: Date.now(), key: cacheKey }
+
+    const data = filterByType(merged, type, target)
 
     return NextResponse.json({
       success: true,
-      data: markets,
-      count: markets.length,
+      data,
+      count: data.length,
       timestamp: new Date().toISOString(),
-      source: 'polymarket-gamma-api',
+      source: 'live',
+      cached: false,
     })
-  } catch (error) {
-    console.error('Critical API error:', error)
+  } catch (error: any) {
+    // Serve stale cache if available
+    if (marketCache) {
+      const { searchParams } = new URL(request.url)
+      const type = searchParams.get('type')
+      const target = Math.max(1, Math.min(300, parseInt(searchParams.get('limit') || '100')))
+      const data = filterByType(marketCache.data, type, target)
+      return NextResponse.json({
+        success: true,
+        data,
+        count: data.length,
+        timestamp: new Date().toISOString(),
+        source: 'stale-cache',
+        warning: `Upstream error: ${error?.message || 'unknown'}`,
+        cached: true,
+      })
+    }
 
-    // Generate fallback data only on complete failure
-    const fallbackMarkets = generateFallbackMarkets()
-    const { searchParams } = new URL(request.url)
-    const type = searchParams.get('type')
-    const limit = parseInt(searchParams.get('limit') || '50')
-
-    const markets = type === 'featured'
-      ? fallbackMarkets.filter(m => m.featured).slice(0, 6)
-      : type === 'trending'
-      ? fallbackMarkets.filter(m => m.trending).slice(0, 8)
-      : fallbackMarkets.slice(0, limit)
-
+    // Fallback
     return NextResponse.json({
       success: true,
-      data: markets,
-      count: markets.length,
+      data: [],
+      count: 0,
       timestamp: new Date().toISOString(),
       source: 'fallback',
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
+      error: error?.message || 'Unknown error occurred',
     })
   }
+}
+
+// --------------- Helpers ---------------
+function filterByType(all: Market[], type: string | null, target: number): Market[] {
+  if (type === 'featured') {
+    return all
+      .filter((m) => (m.totalVolume ?? 0) > 5_000 && (m.liquidity ?? 0) > 1_000)
+      .slice(0, Math.min(6, target))
+      .map((m) => ({ ...m, featured: true }))
+  }
+  if (type === 'trending') {
+    return all
+      .filter((m) => (m.totalVolume ?? 0) > 1_000)
+      .slice(0, Math.min(8, target))
+      .map((m) => ({ ...m, trending: true }))
+  }
+  return all.slice(0, target)
 }
