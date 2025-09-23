@@ -321,6 +321,104 @@ async function fetchMarkets(limit: number = 100): Promise<PolymarketMarket[]> {
   return await response.json()
 }
 
+// Generate fallback markets only when needed
+function generateFallbackMarkets(): Market[] {
+  return [
+    {
+      id: 'fallback-election-2024',
+      question: '2024 Presidential Election Winner',
+      description: 'Who will win the 2024 U.S. Presidential Election?',
+      category: {
+        id: 'politics',
+        name: 'Politics',
+        slug: 'politics',
+        description: 'Elections and political events',
+        color: '#3B82F6',
+        icon: 'Vote',
+      },
+      outcomes: [
+        { id: 'trump', name: 'Trump', price: 0.52, probability: 0.52, volume24h: 2100000, priceChange24h: 0.03 },
+        { id: 'harris', name: 'Harris', price: 0.48, probability: 0.48, volume24h: 1900000, priceChange24h: -0.03 },
+      ],
+      liquidity: 8500000,
+      totalVolume: 84000000,
+      createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+      closingTime: new Date('2024-11-06T00:00:00Z').toISOString(),
+      resolved: false,
+      featured: true,
+      trending: true,
+      tags: ['2024 election', 'president'],
+      creator: 'Polymarket',
+      rules: 'Market resolves based on official election results.',
+      minPrice: 0.01,
+      maxPrice: 0.99,
+      currentPrices: { trump: 0.52, harris: 0.48 },
+    },
+    {
+      id: 'fallback-bitcoin-100k',
+      question: 'Bitcoin above $100k by EOY 2024?',
+      description: 'Will Bitcoin reach $100,000 before January 1, 2025?',
+      category: {
+        id: 'crypto',
+        name: 'Crypto',
+        slug: 'crypto',
+        description: 'Cryptocurrency and blockchain',
+        color: '#F59E0B',
+        icon: 'Coins',
+      },
+      outcomes: [
+        { id: 'yes', name: 'Yes', price: 0.35, probability: 0.35, volume24h: 450000, priceChange24h: 0.05 },
+        { id: 'no', name: 'No', price: 0.65, probability: 0.65, volume24h: 550000, priceChange24h: -0.05 },
+      ],
+      liquidity: 2500000,
+      totalVolume: 12000000,
+      createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
+      closingTime: new Date('2024-12-31T23:59:59Z').toISOString(),
+      resolved: false,
+      featured: true,
+      trending: false,
+      tags: ['bitcoin', 'crypto', 'price'],
+      creator: 'Polymarket',
+      rules: 'Market resolves YES if Bitcoin trades above $100,000 on any major exchange before 2025.',
+      minPrice: 0.01,
+      maxPrice: 0.99,
+      currentPrices: { yes: 0.35, no: 0.65 },
+    },
+    {
+      id: 'fallback-super-bowl',
+      question: 'Super Bowl 2025 Winner',
+      description: 'Which team will win Super Bowl LIX?',
+      category: {
+        id: 'sports',
+        name: 'Sports',
+        slug: 'sports',
+        description: 'Sports predictions and outcomes',
+        color: '#EF4444',
+        icon: 'Trophy',
+      },
+      outcomes: [
+        { id: 'chiefs', name: 'Chiefs', price: 0.18, probability: 0.18, volume24h: 80000, priceChange24h: 0.02 },
+        { id: '49ers', name: '49ers', price: 0.15, probability: 0.15, volume24h: 70000, priceChange24h: -0.01 },
+        { id: 'eagles', name: 'Eagles', price: 0.12, probability: 0.12, volume24h: 60000, priceChange24h: 0.01 },
+        { id: 'other', name: 'Other', price: 0.55, probability: 0.55, volume24h: 190000, priceChange24h: -0.02 },
+      ],
+      liquidity: 1800000,
+      totalVolume: 8500000,
+      createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+      closingTime: new Date('2025-02-09T23:00:00Z').toISOString(),
+      resolved: false,
+      featured: false,
+      trending: true,
+      tags: ['nfl', 'super bowl', 'football'],
+      creator: 'Polymarket',
+      rules: 'Market resolves to the team that wins Super Bowl LIX.',
+      minPrice: 0.01,
+      maxPrice: 0.99,
+      currentPrices: { chiefs: 0.18, '49ers': 0.15, eagles: 0.12, other: 0.55 },
+    },
+  ]
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -336,10 +434,12 @@ export async function GET(request: NextRequest) {
     ])
 
     let allMarkets: Market[] = []
+    let apiCallsSucceeded = false
 
     // Process events (these often have the highest volumes)
     if (eventsData.status === 'fulfilled' && Array.isArray(eventsData.value)) {
       console.log(`Processing ${eventsData.value.length} events`)
+      apiCallsSucceeded = true
       
       for (const event of eventsData.value) {
         if (!event.closed && event.active !== false) {
@@ -372,6 +472,7 @@ export async function GET(request: NextRequest) {
     // Process individual markets
     if (marketsData.status === 'fulfilled' && Array.isArray(marketsData.value)) {
       console.log(`Processing ${marketsData.value.length} individual markets`)
+      apiCallsSucceeded = true
       
       const individualMarkets = marketsData.value
         .filter((market: PolymarketMarket) => !market.closed && market.active !== false)
@@ -383,12 +484,34 @@ export async function GET(request: NextRequest) {
       console.log('Failed to fetch markets:', marketsData.status === 'rejected' ? marketsData.reason : 'No data')
     }
 
+    // Check if we actually got any markets from the API
+    if (!apiCallsSucceeded || allMarkets.length === 0) {
+      // Only use fallback if API completely failed
+      console.log('API calls failed or returned no data, using fallback markets')
+      
+      const fallbackMarkets = generateFallbackMarkets()
+      const markets = type === 'featured'
+        ? fallbackMarkets.filter(m => m.featured).slice(0, 6)
+        : type === 'trending'
+        ? fallbackMarkets.filter(m => m.trending).slice(0, 8)
+        : fallbackMarkets.slice(0, limit)
+
+      return NextResponse.json({
+        success: true,
+        data: markets,
+        count: markets.length,
+        timestamp: new Date().toISOString(),
+        source: 'fallback',
+        warning: 'Using fallback data due to API failure'
+      })
+    }
+
     // Remove duplicates and sort by total volume (events + markets combined)
     const uniqueMarkets = Array.from(
       new Map(allMarkets.map(market => [market.id, market])).values()
     ).sort((a, b) => b.totalVolume - a.totalVolume)
 
-    console.log(`Successfully processed ${uniqueMarkets.length} total markets (events + individual)`)
+    console.log(`Successfully processed ${uniqueMarkets.length} total markets from API`)
 
     // Filter and limit based on request type
     let markets: Market[] = []
@@ -410,7 +533,7 @@ export async function GET(request: NextRequest) {
         markets = uniqueMarkets.slice(0, limit)
     }
 
-    console.log(`Returning ${markets.length} ${type || 'total'} markets`)
+    console.log(`Returning ${markets.length} ${type || 'total'} markets from API`)
     console.log('Top 3 markets by volume:', markets.slice(0, 3).map(m => ({ 
       question: m.question, 
       volume: m.totalVolume,
@@ -422,92 +545,30 @@ export async function GET(request: NextRequest) {
       data: markets,
       count: markets.length,
       timestamp: new Date().toISOString(),
-      source: 'polymarket-gamma-api-enhanced',
+      source: 'polymarket-gamma-api',
     })
   } catch (error) {
-    console.error('API error:', error)
+    console.error('Critical API error:', error)
 
-    // Enhanced fallback with both event and market examples
-    const fallbackMarkets: Market[] = [
-      {
-        id: 'event-2024-election',
-        question: '2024 Presidential Election',
-        description: 'Event with multiple markets related to the 2024 U.S. Presidential Election',
-        category: {
-          id: 'politics',
-          name: 'Politics',
-          slug: 'politics',
-          description: 'Elections and political events',
-          color: '#3B82F6',
-          icon: 'Vote',
-        },
-        outcomes: [
-          { id: 'trump', name: 'Trump', price: 0.52, probability: 0.52, volume24h: 2100000, priceChange24h: 0.03 },
-          { id: 'harris', name: 'Harris', price: 0.48, probability: 0.48, volume24h: 1900000, priceChange24h: -0.03 },
-        ],
-        liquidity: 8500000,
-        totalVolume: 84000000, // This would be the high-volume event you're seeing
-        createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
-        closingTime: new Date('2024-11-06T00:00:00Z').toISOString(),
-        resolved: false,
-        featured: true,
-        trending: true,
-        tags: ['2024 election', 'president', 'Event'],
-        creator: 'Polymarket',
-        rules: 'Event with 15 related markets. Market resolves based on Polymarket resolution criteria.',
-        minPrice: 0.01,
-        maxPrice: 0.99,
-        currentPrices: { trump: 0.52, harris: 0.48 },
-      },
-      {
-        id: 'fallback-jerome-powell',
-        question: 'Jerome Powell out as Fed Chair in 2025?',
-        description: 'Will Jerome Powell cease to be the Chair of the U.S. Federal Reserve in 2025?',
-        category: {
-          id: 'politics',
-          name: 'Politics',
-          slug: 'politics',
-          description: 'Elections and political events',
-          color: '#3B82F6',
-          icon: 'Vote',
-        },
-        outcomes: [
-          { id: 'yes', name: 'Yes', price: 0.05, probability: 0.05, volume24h: 45000, priceChange24h: 0.01 },
-          { id: 'no', name: 'No', price: 0.95, probability: 0.95, volume24h: 185000, priceChange24h: -0.01 },
-        ],
-        liquidity: 212763,
-        totalVolume: 978750,
-        createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
-        closingTime: new Date('2025-12-31T23:59:59Z').toISOString(),
-        resolved: false,
-        featured: true,
-        trending: true,
-        tags: ['jerome powell', 'fed chair'],
-        creator: 'Polymarket',
-        rules: 'Market resolves based on official Federal Reserve announcements.',
-        minPrice: 0.01,
-        maxPrice: 0.99,
-        currentPrices: { yes: 0.05, no: 0.95 },
-      },
-    ]
-
+    // Generate fallback data only on complete failure
+    const fallbackMarkets = generateFallbackMarkets()
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type')
     const limit = parseInt(searchParams.get('limit') || '50')
 
-    const markets =
-      type === 'featured'
-        ? fallbackMarkets.slice(0, 6).map((m) => ({ ...m, featured: true }))
-        : type === 'trending'
-        ? fallbackMarkets.slice(0, 8).map((m) => ({ ...m, trending: true }))
-        : fallbackMarkets.slice(0, limit)
+    const markets = type === 'featured'
+      ? fallbackMarkets.filter(m => m.featured).slice(0, 6)
+      : type === 'trending'
+      ? fallbackMarkets.filter(m => m.trending).slice(0, 8)
+      : fallbackMarkets.slice(0, limit)
 
     return NextResponse.json({
       success: true,
       data: markets,
       count: markets.length,
       timestamp: new Date().toISOString(),
-      source: 'fallback-enhanced',
+      source: 'fallback',
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
     })
   }
 }
