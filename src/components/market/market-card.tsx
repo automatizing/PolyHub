@@ -4,6 +4,7 @@
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { Clock } from 'lucide-react'
+import type { CSSProperties } from 'react'
 
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card'
 import { buttonVariants } from '@/components/ui/button'
@@ -37,10 +38,13 @@ function rgba(hex: string | undefined, a: number) {
 type Props = {
   market: Market
   className?: string
+  /** Optional layout hint used by pages: 'default' (grid card) or 'compact' (list). */
+  variant?: 'default' | 'compact'
 }
 
-function MarketCardComponent({ market, className }: Props) {
+function MarketCardComponent({ market, className, variant = 'default' }: Props) {
   const href = `/markets/${market.id}`
+  const isCompact = variant === 'compact'
 
   const closesIn =
     market.closingTime
@@ -54,7 +58,7 @@ function MarketCardComponent({ market, className }: Props) {
       : (market as any).volume24hr ?? 0
 
   const categoryColor = market.category?.color
-  const categoryStyles: React.CSSProperties = {
+  const categoryStyles: CSSProperties = {
     color: categoryColor || '#6B7280',
     backgroundColor: rgba(categoryColor, 0.12),
     borderColor: rgba(categoryColor, 0.35),
@@ -62,9 +66,14 @@ function MarketCardComponent({ market, className }: Props) {
 
   return (
     <Card className={cn('h-full bg-card/40', className)}>
-      <CardHeader className="space-y-2">
+      <CardHeader className={cn('space-y-2', isCompact && 'space-y-1')}>
         {/* Title first */}
-        <h3 className="text-lg font-semibold leading-snug line-clamp-2">
+        <h3
+          className={cn(
+            'font-semibold leading-snug line-clamp-2',
+            isCompact ? 'text-base' : 'text-lg'
+          )}
+        >
           {market.question}
         </h3>
 
@@ -80,19 +89,24 @@ function MarketCardComponent({ market, className }: Props) {
         )}
 
         {closesIn && (
-          <div className="mt-1 flex items-center gap-2 text-muted-foreground text-sm">
+          <div
+            className={cn(
+              'mt-1 flex items-center gap-2 text-muted-foreground',
+              isCompact ? 'text-[13px]' : 'text-sm'
+            )}
+          >
             <Clock className="h-4 w-4" />
             <span>Closes in {closesIn}</span>
           </div>
         )}
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className={cn('space-y-4', isCompact && 'space-y-3')}>
         {/* Outcomes block intentionally removed to declutter */}
 
         <div className="h-px w-full bg-border/60" />
 
-        <div className="grid grid-cols-3 gap-3 text-sm">
+        <div className={cn('grid gap-3 text-sm', isCompact ? 'grid-cols-2' : 'grid-cols-3')}>
           <div className="flex flex-col">
             <span className="text-muted-foreground">Liquidity</span>
             <span className="font-semibold">${formatCompact(market.liquidity)}</span>
@@ -101,15 +115,17 @@ function MarketCardComponent({ market, className }: Props) {
             <span className="text-muted-foreground">Volume</span>
             <span className="font-semibold">{formatCompact(market.totalVolume)}</span>
           </div>
-          <div className="flex flex-col">
-            <span className="text-muted-foreground">24h Volume</span>
-            <span className="font-semibold">{formatCompact(vol24h)}</span>
-          </div>
+          {!isCompact && (
+            <div className="flex flex-col">
+              <span className="text-muted-foreground">24h Volume</span>
+              <span className="font-semibold">{formatCompact(vol24h)}</span>
+            </div>
+          )}
         </div>
       </CardContent>
 
       {/* Buttons stacked: Trade on top, View Details below */}
-      <CardFooter className="flex flex-col gap-3">
+      <CardFooter className={cn('flex flex-col gap-3', isCompact && 'gap-2')}>
         <Link
           href={href}
           className={cn(buttonVariants({ size: 'lg' }), 'w-full')}
