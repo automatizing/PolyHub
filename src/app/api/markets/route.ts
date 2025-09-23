@@ -257,7 +257,6 @@ async function fetchWithRetry(url: string, init: RequestInit, retries = 2): Prom
     }
   }
   // Should never reach here
-  // @ts-expect-error
   return new Response(null, { status: 500 })
 }
 
