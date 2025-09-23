@@ -38,13 +38,14 @@ function rgba(hex: string | undefined, a: number) {
 type Props = {
   market: Market
   className?: string
-  /** Optional layout hint used by pages: 'default' (grid card) or 'compact' (list). */
-  variant?: 'default' | 'compact'
+  /** Optional layout hint used by pages: 'default' (grid card), 'compact' (list), or 'featured' (same as default). */
+  variant?: 'default' | 'compact' | 'featured'
 }
 
 function MarketCardComponent({ market, className, variant = 'default' }: Props) {
   const href = `/markets/${market.id}`
   const isCompact = variant === 'compact'
+  // 'featured' currently renders like 'default' intentionally
 
   const closesIn =
     market.closingTime
