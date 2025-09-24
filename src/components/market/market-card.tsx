@@ -34,25 +34,48 @@ function rgba(hex: string | undefined, a: number) {
   return `rgba(${r}, ${g}, ${b}, ${a})`
 }
 
+// Build a search URL for the chosen engine (default: Google)
+const SEARCH_ENGINE = (process.env.NEXT_PUBLIC_SEARCH_ENGINE || 'google').toLowerCase()
+function buildSearchUrl(query: string) {
+  const q = encodeURIComponent(query || '')
+  switch (SEARCH_ENGINE) {
+    case 'duckduckgo':
+    case 'ddg':
+      return `https://duckduckgo.com/?q=${q}`
+    case 'bing':
+      return `https://www.bing.com/search?q=${q}`
+    case 'brave':
+      return `https://search.brave.com/search?q=${q}`
+    case 'google':
+    default:
+      return `https://www.google.com/search?q=${q}`
+  }
+}
+
 // -------- component --------
 type Props = {
   market: Market
   className?: string
-  /** Optional layout hint used by pages: 'default' (grid card), 'compact' (list), or 'featured' (same as default). */
+  /** 'default' (grid card), 'compact' (list), or 'featured' (same as default). */
   variant?: 'default' | 'compact' | 'featured'
 }
 
 function MarketCardComponent({ market, className, variant = 'default' }: Props) {
   const href = `/markets/${market.id}`
   const isCompact = variant === 'compact'
-  // 'featured' currently renders like 'default' intentionally
+
+  // prefer API-provided externalUrl; fall back to a generic best-guess
+  const externalUrl =
+    (market as any).externalUrl ||
+    `https://polymarket.com/market/${market.id}`
+
+  const searchUrl = buildSearchUrl(market.question)
 
   const closesIn =
     market.closingTime
       ? formatDistanceToNow(new Date(market.closingTime), { addSuffix: false })
       : null
 
-  // 24h volume (sum of outcome volume24h if present)
   const vol24h =
     Array.isArray(market.outcomes)
       ? market.outcomes.reduce((s, o) => s + (o.volume24h ?? 0), 0)
@@ -104,7 +127,6 @@ function MarketCardComponent({ market, className, variant = 'default' }: Props) 
 
       <CardContent className={cn('space-y-4', isCompact && 'space-y-3')}>
         {/* Outcomes block intentionally removed to declutter */}
-
         <div className="h-px w-full bg-border/60" />
 
         <div className={cn('grid gap-3 text-sm', isCompact ? 'grid-cols-2' : 'grid-cols-3')}>
@@ -125,23 +147,33 @@ function MarketCardComponent({ market, className, variant = 'default' }: Props) 
         </div>
       </CardContent>
 
-      {/* Buttons stacked: Trade on top, View Details below */}
+      {/* Buttons stacked: Trade on top, Learn More below */}
       <CardFooter className={cn('flex flex-col gap-3', isCompact && 'gap-2')}>
-        <Link
-          href={href}
+        {/* External Polymarket link */}
+        <a
+          href={externalUrl}
+          target="_blank"
+          rel="noopener noreferrer"
           className={cn(buttonVariants({ size: 'lg' }), 'w-full')}
         >
           Trade Now
-        </Link>
-        <Link
-          href={href}
+        </a>
+
+        {/* External search for the topic */}
+        <a
+          href={searchUrl}
+          target="_blank"
+            rel="noopener noreferrer"
           className={cn(
             buttonVariants({ variant: 'outline', size: 'lg' }),
             'w-full'
           )}
         >
-          View Details
-        </Link>
+          Learn More
+        </a>
+
+        {/* (Optional) keep internal link somewhere else if needed */}
+        {/* <Link href={href} className="sr-only">Internal details</Link> */}
       </CardFooter>
     </Card>
   )
