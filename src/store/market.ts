@@ -108,7 +108,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
   categories: defaultCategories,
   
   filters: defaultFilters,
-  sortBy: 'trending',
+  sortBy: 'volume',
   sortDirection: 'desc',
   searchQuery: '',
   
