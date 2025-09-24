@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Search, Menu, TrendingUp, BarChart3, Info } from 'lucide-react'
+import { Search, Menu, TrendingUp, BarChart3, Info, Coins } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -15,6 +15,8 @@ const navigation = [
   { name: 'Home', href: '/', icon: TrendingUp },
   { name: 'Markets', href: '/markets', icon: BarChart3 },
   { name: 'About', href: '/about', icon: Info },
+  // New nav item per request (opens about:blank)
+  { name: 'Contact Address', href: 'about:blank', icon: Coins, external: true },
 ]
 
 export function Header() {
@@ -24,19 +26,17 @@ export function Header() {
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    // Search functionality will be handled by the market store
-    // Navigation to markets page with search query
     if (searchQuery.trim()) {
       window.location.href = `/markets?search=${encodeURIComponent(searchQuery)}`
     }
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between">
-        {/* Left side - Logo and Navigation */}
-        <div className="flex items-center gap-6">
-          {/* Mobile menu button */}
+    <header className="sticky top-0 z-50 w-full border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-16 items-center justify-between gap-4">
+        {/* Left: Mobile menu + Brand + Desktop nav */}
+        <div className="flex items-center gap-2 md:gap-4">
+          {/* Mobile menu */}
           <Button
             variant="ghost"
             size="icon"
@@ -58,55 +58,57 @@ export function Header() {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1">
             {navigation.map((item) => {
-              const isActive = pathname === item.href || 
+              const isActive =
+                pathname === item.href ||
                 (item.href !== '/' && pathname.startsWith(item.href))
-              
-              return (
+
+              const buttonEl = (
+                <Button
+                  variant={isActive ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className={cn('gap-2', isActive && 'bg-secondary text-secondary-foreground')}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.name}
+                </Button>
+              )
+
+              return item.external ? (
+                <a
+                  key={item.name}
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {buttonEl}
+                </a>
+              ) : (
                 <Link key={item.name} href={item.href}>
-                  <Button
-                    variant={isActive ? "secondary" : "ghost"}
-                    size="sm"
-                    className={cn(
-                      "gap-2",
-                      isActive && "bg-secondary text-secondary-foreground"
-                    )}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    {item.name}
-                  </Button>
+                  {buttonEl}
                 </Link>
               )
             })}
           </nav>
         </div>
 
-        {/* Center - Search */}
-        <div className="flex-1 max-w-md mx-4">
-          <form onSubmit={handleSearch} className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search markets..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4"
-            />
+        {/* Right: Search + Theme toggle (CA button removed) */}
+        <div className="flex flex-1 items-center gap-3">
+          <form onSubmit={handleSearch} className="flex-1">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search markets..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
           </form>
-        </div>
 
-        {/* Right side - CA button and Theme toggle */}
-        <div className="flex items-center gap-2">
-          {/* CA Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.open('about:blank', '_blank')}
-            className="px-3 py-1.5 text-sm"
-          >
-            CA
-          </Button>
-          
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+          </div>
         </div>
       </div>
     </header>
