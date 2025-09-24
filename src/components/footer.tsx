@@ -1,5 +1,6 @@
 import React from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Twitter, Coins } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -17,7 +18,6 @@ const footerLinks = {
 
 const socialLinks = [
   { name: 'Twitter', href: 'https://x.com/polyhubapp/', icon: Twitter },
-  // Chat/Discord icon removed previously
   { name: 'Coin', href: 'https://pump.fun/', icon: Coins },
 ]
 
@@ -29,9 +29,14 @@ export function Footer() {
           {/* Brand and description */}
           <div className="lg:col-span-2">
             <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-                P
-              </div>
+              <Image
+                src="/poly.ico"
+                alt="PolyHub logo"
+                width={32}
+                height={32}
+                className="h-8 w-8 rounded-lg"
+                priority
+              />
               <span className="font-bold text-xl">PolyHub</span>
             </Link>
             <p className="text-sm text-muted-foreground mb-6 max-w-md">
