@@ -1,3 +1,4 @@
+// src/components/market/market-filters.tsx
 import React from 'react'
 import { Filter, X, Calendar, DollarSign } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -11,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
 import { useMarketStore } from '@/store/market'
 import { MARKET_CATEGORIES, MarketStatus } from '@/types'
 import { cn } from '@/lib/utils'
@@ -21,30 +21,38 @@ interface MarketFiltersProps {
   mobile?: boolean
 }
 
-export function MarketFilters({ className, mobile = false }: MarketFiltersProps) {
+export function MarketFilters({ className, mobile }: MarketFiltersProps) {
   const {
     filters,
     setFilters,
-    resetFilters,
+    resetFilters,        // ✅ use resetFilters from the store
     searchQuery,
     setSearchQuery,
   } = useMarketStore()
 
+  // Remove "Science" from the category chips
+  const CATEGORY_PILLS = React.useMemo(
+    () =>
+      MARKET_CATEGORIES.filter(
+        (c: any) =>
+          c?.id !== 'science' &&
+          String(c?.name || '').toLowerCase() !== 'science'
+      ),
+    []
+  )
+
   const activeFilterCount = [
     filters.categories.length > 0,
-    filters.status.length > 1 || !filters.status.includes('open'),
-    filters.featured,
-    filters.trending,
-    filters.liquidity.min > 0 || filters.liquidity.max < Infinity,
-    filters.closingTime.start || filters.closingTime.end,
-    searchQuery.length > 0,
+    filters.status.length > 0 && !filters.status.includes('open') && !filters.status.includes('all'),
+    (filters.liquidity?.min ?? 0) > 0 || (filters.liquidity?.max ?? Infinity) < Infinity,
+    !!filters.closingTime?.start || !!filters.closingTime?.end,
+    (searchQuery || '').length > 0,
   ].filter(Boolean).length
 
   const handleCategoryToggle = (categoryId: string) => {
     const newCategories = filters.categories.includes(categoryId)
-      ? filters.categories.filter(id => id !== categoryId)
+      ? filters.categories.filter((id: string) => id !== categoryId)
       : [...filters.categories, categoryId]
-    
     setFilters({ categories: newCategories })
   }
 
@@ -55,9 +63,9 @@ export function MarketFilters({ className, mobile = false }: MarketFiltersProps)
       const newStatus = filters.status.includes('all')
         ? [status as MarketStatus]
         : filters.status.includes(status as MarketStatus)
-        ? filters.status.filter(s => s !== status)
-        : [...filters.status.filter(s => s !== 'all'), status as MarketStatus]
-      
+        ? filters.status.filter((s: string) => s !== status)
+        : [...filters.status.filter((s: string) => s !== 'all'), status as MarketStatus]
+
       setFilters({ status: newStatus.length === 0 ? ['all'] : newStatus })
     }
   }
@@ -75,50 +83,49 @@ export function MarketFilters({ className, mobile = false }: MarketFiltersProps)
               </Badge>
             )}
           </CardTitle>
-          {activeFilterCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={resetFilters}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4 mr-1" />
-              Clear
-            </Button>
-          )}
+
+          <div className="flex items-center gap-2">
+            {mobile ? (
+              <Button variant="ghost" size="icon" onClick={() => resetFilters()}>
+                <X className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button variant="ghost" size="sm" onClick={() => resetFilters()}>
+                Clear
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
 
       <CardContent className="space-y-6">
         {/* Search */}
-        {mobile && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Search</label>
-            <Input
-              placeholder="Search markets..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        )}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Search</label>
+          <Input
+            placeholder="Search markets"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
 
-        {/* Categories */}
+        {/* Categories (Science removed) */}
         <div className="space-y-3">
           <label className="text-sm font-medium">Categories</label>
           <div className="flex flex-wrap gap-2">
-            {MARKET_CATEGORIES.map((category) => (
+            {CATEGORY_PILLS.map((category: any) => (
               <Badge
                 key={category.id}
-                variant={filters.categories.includes(category.id) ? "default" : "outline"}
+                variant={filters.categories.includes(category.id) ? 'default' : 'outline'}
                 className="cursor-pointer hover:opacity-80 transition-opacity"
                 onClick={() => handleCategoryToggle(category.id)}
                 style={{
-                  backgroundColor: filters.categories.includes(category.id) 
-                    ? category.color 
+                  backgroundColor: filters.categories.includes(category.id)
+                    ? category.color
                     : 'transparent',
                   borderColor: category.color,
-                  color: filters.categories.includes(category.id) 
-                    ? 'white' 
+                  color: filters.categories.includes(category.id)
+                    ? 'white'
                     : category.color,
                 }}
               >
@@ -140,9 +147,11 @@ export function MarketFilters({ className, mobile = false }: MarketFiltersProps)
             ].map((status) => (
               <Badge
                 key={status.value}
-                variant={filters.status.includes(status.value as any) ? "default" : "outline"}
+                variant={
+                  filters.status.includes(status.value as any) ? 'default' : 'outline'
+                }
                 className="cursor-pointer hover:opacity-80 transition-opacity justify-center py-2"
-                onClick={() => handleStatusChange(status.value as MarketStatus)}
+                onClick={() => handleStatusChange(status.value)}
               >
                 {status.label}
               </Badge>
@@ -150,41 +159,22 @@ export function MarketFilters({ className, mobile = false }: MarketFiltersProps)
           </div>
         </div>
 
-        {/* Quick filters */}
-        <div className="space-y-3">
-          <label className="text-sm font-medium">Quick Filters</label>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Featured markets</span>
-              <Switch
-                checked={filters.featured}
-                onCheckedChange={(checked) => setFilters({ featured: checked })}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Trending markets</span>
-              <Switch
-                checked={filters.trending}
-                onCheckedChange={(checked) => setFilters({ trending: checked })}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Liquidity range */}
-        <div className="space-y-3">
+        {/* Minimum Liquidity */}
+        <div className="space-y-2">
           <label className="text-sm font-medium flex items-center gap-2">
             <DollarSign className="h-4 w-4" />
             Minimum Liquidity
           </label>
           <Select
-            value={filters.liquidity.min.toString()}
-            onValueChange={(value) => setFilters({ 
-              liquidity: { ...filters.liquidity, min: parseInt(value) }
-            })}
+            value={String(filters.liquidity?.min ?? 0)}
+            onValueChange={(value) =>
+              setFilters({
+                liquidity: { ...filters.liquidity, min: Number(value) },
+              })
+            }
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Select minimum liquidity" />
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="No minimum" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="0">No minimum</SelectItem>
@@ -198,7 +188,7 @@ export function MarketFilters({ className, mobile = false }: MarketFiltersProps)
           </Select>
         </div>
 
-        {/* Closing time */}
+        {/* Closing Time */}
         <div className="space-y-3">
           <label className="text-sm font-medium flex items-center gap-2">
             <Calendar className="h-4 w-4" />
@@ -207,47 +197,52 @@ export function MarketFilters({ className, mobile = false }: MarketFiltersProps)
           <div className="grid grid-cols-1 gap-2">
             <Input
               type="date"
-              placeholder="From date"
-              value={filters.closingTime.start}
-              onChange={(e) => setFilters({
-                closingTime: { ...filters.closingTime, start: e.target.value }
-              })}
+              value={filters.closingTime?.start || ''}
+              onChange={(e) =>
+                setFilters({
+                  closingTime: { ...filters.closingTime, start: e.target.value },
+                })
+              }
             />
             <Input
               type="date"
-              placeholder="To date"
-              value={filters.closingTime.end}
-              onChange={(e) => setFilters({
-                closingTime: { ...filters.closingTime, end: e.target.value }
-              })}
+              value={filters.closingTime?.end || ''}
+              onChange={(e) =>
+                setFilters({
+                  closingTime: { ...filters.closingTime, end: e.target.value },
+                })
+              }
             />
           </div>
         </div>
 
-        {/* Active filters summary */}
+        {/* Active filter summary */}
         {activeFilterCount > 0 && (
-          <div className="pt-4 border-t">
-            <div className="text-sm text-muted-foreground mb-2">
-              Active filters ({activeFilterCount}):
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {filters.categories.map((categoryId) => {
-                const category = MARKET_CATEGORIES.find(c => c.id === categoryId)
-                return category ? (
-                  <Badge key={categoryId} variant="secondary" className="text-xs">
-                    {category.name}
+          <div className="pt-2">
+            <div className="flex flex-wrap gap-2">
+              {filters.categories.map((catId: string) => {
+                const cat = CATEGORY_PILLS.find((c: any) => c.id === catId)
+                if (!cat) return null
+                return (
+                  <Badge key={catId} variant="secondary" className="text-xs">
+                    {cat.name}
                   </Badge>
-                ) : null
+                )
               })}
-              {filters.featured && (
-                <Badge variant="secondary" className="text-xs">Featured</Badge>
-              )}
-              {filters.trending && (
-                <Badge variant="secondary" className="text-xs">Trending</Badge>
-              )}
-              {filters.liquidity.min > 0 && (
+              {!filters.status.includes('open') &&
+                filters.status.map((s: string) => (
+                  <Badge key={s} variant="secondary" className="text-xs">
+                    {s.replace('_', ' ')}
+                  </Badge>
+                ))}
+              {filters.liquidity?.min > 0 && (
                 <Badge variant="secondary" className="text-xs">
                   Min Liquidity: ${filters.liquidity.min.toLocaleString()}
+                </Badge>
+              )}
+              {(filters.closingTime?.start || filters.closingTime?.end) && (
+                <Badge variant="secondary" className="text-xs">
+                  Closing: {filters.closingTime.start || '…'} → {filters.closingTime.end || '…'}
                 </Badge>
               )}
             </div>
