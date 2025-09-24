@@ -279,8 +279,13 @@ export default function MarketsPage() {
                     Try adjusting your filters or search terms, or check back later for new markets
                   </p>
                   <div className="flex gap-2 justify-center">
-                    {/* ADDED: View on Polymarket */}
+                    {/* 1) Left */}
+                    <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                      Reset Filters
+                    </Button>
+                    {/* 2) MIDDLE: View on Polymarket (same size as others) */}
                     <Button
+                      size="sm"
                       onClick={() => {
                         const q = (searchQuery || '').trim()
                         const url = q
@@ -291,11 +296,8 @@ export default function MarketsPage() {
                     >
                       View on Polymarket
                     </Button>
-
-                    <Button variant="outline" onClick={() => window.location.reload()}>
-                      Reset Filters
-                    </Button>
-                    <Button variant="outline" onClick={handleRefresh}>
+                    {/* 3) Right */}
+                    <Button variant="outline" size="sm" onClick={handleRefresh}>
                       <RefreshCw className="h-4 w-4 mr-2" />
                       Refresh Markets
                     </Button>
