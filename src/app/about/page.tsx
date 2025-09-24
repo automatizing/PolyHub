@@ -100,11 +100,6 @@ export default function AboutPage() {
                 Start Trading
               </Button>
             </Link>
-            <Link href="mailto:hello@polyhub.com">
-              <Button size="lg" variant="outline">
-                Contact Us
-              </Button>
-            </Link>
           </div>
         </div>
 
@@ -274,11 +269,6 @@ export default function AboutPage() {
                 <Link href="/markets">
                   <Button size="lg" variant="secondary">
                     Browse Markets
-                  </Button>
-                </Link>
-                <Link href="mailto:hello@polyhub.com">
-                  <Button size="lg" variant="secondary">
-                    Contact Us
                   </Button>
                 </Link>
               </div>
