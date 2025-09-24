@@ -86,6 +86,11 @@ export default function MarketsPage() {
     return filteredMarkets.slice(startIndex, endIndex)
   }, [filteredMarkets, currentPage, itemsPerPage])
 
+  // Values for the toolbar summary
+  const total = filteredMarkets.length
+  const start = total === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1
+  const end = Math.min(currentPage * itemsPerPage, total)
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -235,9 +240,33 @@ export default function MarketsPage() {
 
           {/* Main Content */}
           <div className="flex-1 min-w-0">
-            {/* Sort and view controls */}
+            {/* Cleaner toolbar: summary left, controls right */}
             <div className="mb-6">
-              <MarketSort resultsCount={filteredMarkets.length} />
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Showing{' '}
+                  <span className="font-medium text-foreground">
+                    {Intl.NumberFormat().format(start)}–{Intl.NumberFormat().format(end)}
+                  </span>{' '}
+                  of{' '}
+                  <span className="font-medium text-foreground">
+                    {Intl.NumberFormat().format(total)}
+                  </span>{' '}
+                  markets
+                </div>
+
+                {/* Right side: keep your existing MarketSort controls */}
+                <div className="market-toolbar-right">
+                  <MarketSort resultsCount={filteredMarkets.length} />
+                </div>
+              </div>
+
+              {/* Hide any duplicate summary inside MarketSort to avoid clutter */}
+              <style jsx global>{`
+                .market-toolbar-right > * > :first-child {
+                  display: none !important;
+                }
+              `}</style>
             </div>
 
             {/* No results state */}
@@ -272,15 +301,17 @@ export default function MarketsPage() {
             {/* Markets Grid/List */}
             {filteredMarkets.length > 0 && !isLoading && (
               <>
-                <div className={cn(
-                  'grid gap-6 mb-8',
-                  viewMode === 'grid' 
-                    ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
-                    : 'grid-cols-1'
-                )}>
+                <div
+                  className={cn(
+                    'grid gap-6 mb-8',
+                    viewMode === 'grid'
+                      ? 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
+                      : 'grid-cols-1'
+                  )}
+                >
                   {paginatedMarkets.map((market) => (
-                    <MarketCard 
-                      key={market.id} 
+                    <MarketCard
+                      key={market.id}
                       market={market}
                       variant={viewMode === 'list' ? 'compact' : 'default'}
                     />
@@ -297,11 +328,11 @@ export default function MarketsPage() {
                     >
                       Previous
                     </Button>
-                    
+
                     <div className="flex items-center gap-1">
                       {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                         let pageNum: number
-                        
+
                         if (totalPages <= 5) {
                           pageNum = i + 1
                         } else if (currentPage <= 3) {
@@ -311,11 +342,11 @@ export default function MarketsPage() {
                         } else {
                           pageNum = currentPage - 2 + i
                         }
-                        
+
                         return (
                           <Button
                             key={pageNum}
-                            variant={currentPage === pageNum ? "default" : "outline"}
+                            variant={currentPage === pageNum ? 'default' : 'outline'}
                             size="icon"
                             className="w-10 h-10"
                             onClick={() => handlePageChange(pageNum)}
@@ -325,7 +356,7 @@ export default function MarketsPage() {
                         )
                       })}
                     </div>
-                    
+
                     <Button
                       variant="outline"
                       disabled={currentPage === totalPages}
@@ -338,11 +369,8 @@ export default function MarketsPage() {
 
                 {/* Results summary */}
                 <div className="text-center text-sm text-muted-foreground mt-4">
-                  Showing {Math.min(itemsPerPage, filteredMarkets.length)} of{' '}
-                  {filteredMarkets.length} markets
-                  {totalPages > 1 && (
-                    <> (Page {currentPage} of {totalPages})</>
-                  )}
+                  Showing {Math.min(itemsPerPage, filteredMarkets.length)} of {filteredMarkets.length} markets
+                  {totalPages > 1 && <> (Page {currentPage} of {totalPages})</>}
                 </div>
               </>
             )}
