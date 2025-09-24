@@ -1,7 +1,6 @@
 // src/components/market/market-card.tsx
 'use client'
 
-import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { Clock } from 'lucide-react'
 import type { CSSProperties } from 'react'
@@ -9,7 +8,6 @@ import type { CSSProperties } from 'react'
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-
 import type { Market } from '@/types'
 
 // -------- helpers --------
@@ -22,13 +20,12 @@ function formatCompact(n: number | undefined | null) {
 }
 
 function hexToRgb(hex?: string) {
-  if (!hex) return { r: 107, g: 114, b: 128 } // gray-500 fallback
+  if (!hex) return { r: 107, g: 114, b: 128 }
   const m = hex.replace('#', '')
   const full = m.length === 3 ? m.split('').map((c) => c + c).join('') : m
   const num = parseInt(full, 16)
   return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 }
 }
-
 function rgba(hex: string | undefined, a: number) {
   const { r, g, b } = hexToRgb(hex)
   return `rgba(${r}, ${g}, ${b}, ${a})`
@@ -40,15 +37,10 @@ function buildSearchUrl(query: string) {
   const q = encodeURIComponent(query || '')
   switch (SEARCH_ENGINE) {
     case 'duckduckgo':
-    case 'ddg':
-      return `https://duckduckgo.com/?q=${q}`
-    case 'bing':
-      return `https://www.bing.com/search?q=${q}`
-    case 'brave':
-      return `https://search.brave.com/search?q=${q}`
-    case 'google':
-    default:
-      return `https://www.google.com/search?q=${q}`
+    case 'ddg': return `https://duckduckgo.com/?q=${q}`
+    case 'bing': return `https://www.bing.com/search?q=${q}`
+    case 'brave': return `https://search.brave.com/search?q=${q}`
+    default: return `https://www.google.com/search?q=${q}`
   }
 }
 
@@ -61,13 +53,11 @@ type Props = {
 }
 
 function MarketCardComponent({ market, className, variant = 'default' }: Props) {
-  const href = `/markets/${market.id}`
   const isCompact = variant === 'compact'
 
   // prefer API-provided externalUrl; fall back to a generic best-guess
   const externalUrl =
-    (market as any).externalUrl ||
-    `https://polymarket.com/market/${market.id}`
+    (market as any).externalUrl || `https://polymarket.com/market/${market.id}`
 
   const searchUrl = buildSearchUrl(market.question)
 
@@ -91,17 +81,12 @@ function MarketCardComponent({ market, className, variant = 'default' }: Props) 
   return (
     <Card className={cn('h-full bg-card/40', className)}>
       <CardHeader className={cn('space-y-2', isCompact && 'space-y-1')}>
-        {/* Title first */}
-        <h3
-          className={cn(
-            'font-semibold leading-snug line-clamp-2',
-            isCompact ? 'text-base' : 'text-lg'
-          )}
-        >
+        {/* Title */}
+        <h3 className={cn('font-semibold leading-snug line-clamp-2', isCompact ? 'text-base' : 'text-lg')}>
           {market.question}
         </h3>
 
-        {/* Colored category pill under the title */}
+        {/* Colored category pill */}
         {market.category?.name && (
           <span
             className="inline-flex w-fit items-center rounded-full border px-2.5 py-0.5 text-xs font-medium"
@@ -113,12 +98,7 @@ function MarketCardComponent({ market, className, variant = 'default' }: Props) 
         )}
 
         {closesIn && (
-          <div
-            className={cn(
-              'mt-1 flex items-center gap-2 text-muted-foreground',
-              isCompact ? 'text-[13px]' : 'text-sm'
-            )}
-          >
+          <div className={cn('mt-1 flex items-center gap-2 text-muted-foreground', isCompact ? 'text-[13px]' : 'text-sm')}>
             <Clock className="h-4 w-4" />
             <span>Closes in {closesIn}</span>
           </div>
@@ -126,20 +106,19 @@ function MarketCardComponent({ market, className, variant = 'default' }: Props) 
       </CardHeader>
 
       <CardContent className={cn('space-y-4', isCompact && 'space-y-3')}>
-        {/* Outcomes block intentionally removed to declutter */}
         <div className="h-px w-full bg-border/60" />
 
-        {/* Always show 3 stats columns in both views */}
-        <div className={cn('grid grid-cols-3 gap-3 text-sm')}>
-          <div className="flex flex-col">
+        {/* Always show 3 stats columns in all variants */}
+        <div className="grid grid-cols-3 gap-3 text-sm">
+          <div className="flex min-w-0 flex-col">
             <span className="text-muted-foreground">Liquidity</span>
             <span className="font-semibold">${formatCompact(market.liquidity)}</span>
           </div>
-          <div className="flex flex-col">
+          <div className="flex min-w-0 flex-col">
             <span className="text-muted-foreground">Volume</span>
             <span className="font-semibold">{formatCompact(market.totalVolume)}</span>
           </div>
-          <div className="flex flex-col">
+          <div className="flex min-w-0 flex-col">
             <span className="text-muted-foreground">24h Volume</span>
             <span className="font-semibold">{formatCompact(vol24h)}</span>
           </div>
@@ -153,6 +132,7 @@ function MarketCardComponent({ market, className, variant = 'default' }: Props) 
           href={externalUrl}
           target="_blank"
           rel="noopener noreferrer"
+          aria-label={`Trade "${market.question}" on Polymarket (opens in a new tab)`}
           className={cn(buttonVariants({ size: 'lg' }), 'w-full')}
         >
           Trade Now
@@ -163,6 +143,7 @@ function MarketCardComponent({ market, className, variant = 'default' }: Props) 
           href={searchUrl}
           target="_blank"
           rel="noopener noreferrer"
+          aria-label={`Search the web to learn more about "${market.question}" (opens in a new tab)`}
           className={cn(
             buttonVariants({ variant: 'outline', size: 'lg' }),
             'w-full'
@@ -170,9 +151,6 @@ function MarketCardComponent({ market, className, variant = 'default' }: Props) 
         >
           Learn More
         </a>
-
-        {/* (Optional) keep internal link somewhere else if needed */}
-        {/* <Link href={href} className="sr-only">Internal details</Link> */}
       </CardFooter>
     </Card>
   )
