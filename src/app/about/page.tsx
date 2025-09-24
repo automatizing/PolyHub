@@ -38,10 +38,11 @@ export default function AboutPage() {
       title: 'Community Driven',
       description: 'Join a vibrant community of traders, researchers, and forecasters from around the world.',
     },
+    // CHANGED: Fast Execution -> Live Data Feeds (view-only)
     {
       icon: Zap,
-      title: 'Fast Execution',
-      description: 'Execute trades instantly with our high-performance trading engine and minimal latency.',
+      title: 'Live Data Feeds',
+      description: 'We aggregate markets from multiple platforms and update prices and events in real time—view only; no trade execution.',
     },
     {
       icon: Globe,
@@ -72,12 +73,14 @@ export default function AboutPage() {
       title: 'Market Resolution',
       content: 'Markets are resolved based on predetermined criteria and reliable data sources. Resolution decisions are final.',
     },
+    // UPDATED previously per your request
     {
-      title: 'Regulatory Compliance',
-      content: 'PolyHub operates in compliance with applicable laws and regulations. Users are responsible for compliance in their jurisdiction.',
+      title: 'Information Hub (Not a Trading Platform)',
+      content:
+        'PolyHub aggregates and displays prediction-market data from third-party venues in real time. We do not execute trades, hold funds, or custody assets. For any trading activity, please use the original market platform.',
     },
     {
-      title: 'Platform Availability',
+      title: 'Service Availability',
       content: 'While we strive for 100% uptime, the platform may occasionally be unavailable due to maintenance or technical issues.',
     },
   ]
@@ -172,7 +175,7 @@ export default function AboutPage() {
           </div>
         </div>
 
-        {/* Features */}
+        {/* Platform Features */}
         <div className="mb-16">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold mb-4">Platform Features</h2>
