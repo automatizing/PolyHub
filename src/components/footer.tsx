@@ -1,24 +1,24 @@
 import React from 'react'
 import Link from 'next/link'
-import { Github, Twitter, MessageCircle, Mail, Coins } from 'lucide-react'
+import { Twitter, Coins } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 const footerLinks = {
   product: [
     { name: 'Markets', href: '/markets' },
     { name: 'How it Works', href: '/about' },
-    { name: 'Contact Address', href: 'about:blank', target: '_blank' },
+    { name: 'Contact Address', href: 'https://x.com/polyhubapp', target: '_blank' },
   ],
   support: [
-    { name: 'Community', href: '/community' },
+    { name: 'Community', href: 'https://x.com/polyhubapp', target: '_blank' },
     { name: 'Contact Us', href: '/contact' },
   ],
 }
 
 const socialLinks = [
-  { name: 'Twitter', href: '#', icon: Twitter },
-  { name: 'Discord', href: '#', icon: MessageCircle },
-  { name: 'Coin', href: 'about:blank', icon: Coins },
+  { name: 'Twitter', href: 'https://x.com/polyhubapp/', icon: Twitter },
+  // Chat/Discord icon removed previously
+  { name: 'Coin', href: 'https://pump.fun/', icon: Coins },
 ]
 
 export function Footer() {
@@ -40,7 +40,12 @@ export function Footer() {
             </p>
             <div className="flex items-center gap-2">
               {socialLinks.map((link) => (
-                <Link key={link.name} href={link.href} target="_blank" rel="noopener noreferrer">
+                <Link
+                  key={link.name}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   <Button variant="ghost" size="icon">
                     <link.icon className="h-4 w-4" />
                     <span className="sr-only">{link.name}</span>
@@ -56,7 +61,7 @@ export function Footer() {
             <ul className="space-y-3">
               {footerLinks.product.map((link) => (
                 <li key={link.name}>
-                  <Link 
+                  <Link
                     href={link.href}
                     target={link.target}
                     rel={link.target === '_blank' ? 'noopener noreferrer' : undefined}
@@ -75,8 +80,10 @@ export function Footer() {
             <ul className="space-y-3">
               {footerLinks.support.map((link) => (
                 <li key={link.name}>
-                  <Link 
+                  <Link
                     href={link.href}
+                    target={link.target}
+                    rel={link.target === '_blank' ? 'noopener noreferrer' : undefined}
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {link.name}
