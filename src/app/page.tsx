@@ -18,12 +18,10 @@ export default function HomePage() {
   const { 
     markets,
     featuredMarkets,
-    trendingMarkets,
     isLoading,
     error,
     fetchMarkets,
     fetchFeaturedMarketsAction,
-    fetchTrendingMarketsAction,
     refreshMarkets
   } = useMarketStore()
 
@@ -36,7 +34,6 @@ export default function HomePage() {
         await Promise.all([
           fetchMarkets(),
           fetchFeaturedMarketsAction(),
-          fetchTrendingMarketsAction()
         ])
       } catch (error) {
         console.error('Failed to load initial data:', error)
@@ -46,7 +43,7 @@ export default function HomePage() {
     }
 
     loadData()
-  }, [fetchMarkets, fetchFeaturedMarketsAction, fetchTrendingMarketsAction])
+  }, [fetchMarkets, fetchFeaturedMarketsAction])
 
   // Calculate stats from real market data
   const stats = React.useMemo(() => {
@@ -209,9 +206,9 @@ export default function HomePage() {
                 <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
-              <Link href="/markets?featured=true">
+              <Link href="/markets">
                 <Button variant="outline" className="px-6 py-2 h-auto">
-                  View All Featured
+                  View All Markets
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
@@ -229,43 +226,6 @@ export default function HomePage() {
           ) : (
             <div className="text-center py-8">
               <p className="text-muted-foreground">No featured markets available</p>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Trending Markets */}
-      <section className="py-12 bg-muted/30">
-        <div className="container">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-3xl font-bold mb-2 flex items-center gap-2">
-                <TrendingUp className="h-8 w-8 text-orange-600" />
-                Trending Now
-              </h2>
-              <p className="text-muted-foreground">
-                Newest and most active markets with recent activity
-              </p>
-            </div>
-            <Link href="/markets?trending=true">
-              <Button variant="outline" className="px-6 py-2 h-auto">
-                View All Trending
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-
-          {isInitialLoading ? (
-            <MarketListSkeleton count={4} variant="compact" />
-          ) : trendingMarkets.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {trendingMarkets.slice(0, 4).map((market) => (
-                <MarketCard key={market.id} market={market} variant="compact" />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">No trending markets available</p>
             </div>
           )}
         </div>
@@ -351,7 +311,7 @@ export default function HomePage() {
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
             Ready to Start Exploring?
           </h2>
-          <p className="text-xl opacity-90 mb-8 max-w-2xl mx-auto">
+        <p className="text-xl opacity-90 mb-8 max-w-2xl mx-auto">
             Discover real prediction markets and stay informed about the events that matter.
           </p>
           <div className="flex justify-center">
