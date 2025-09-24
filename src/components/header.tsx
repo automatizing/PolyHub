@@ -17,7 +17,7 @@ const navigation = [
   { name: 'Markets', href: '/markets', icon: BarChart3 },
   { name: 'About', href: '/about', icon: Info },
   // New nav item per request (opens about:blank)
-  { name: 'Contact Address', href: 'about:blank', icon: Coins, external: true },
+  { name: 'Contact Address', href: 'https://pump.fun/', icon: Coins, external: true },
 ]
 
 export function Header() {
