@@ -8,7 +8,7 @@ const footerLinks = {
   product: [
     { name: 'Markets', href: '/markets' },
     { name: 'How it Works', href: '/about' },
-    { name: 'Contact Address', href: 'https://x.com/polyhubapp', target: '_blank' },
+    { name: 'Contact Address', href: 'https://pump.fun/', target: '_blank' },
   ],
   support: [
     { name: 'Community', href: 'https://x.com/polyhubapp', target: '_blank' },
