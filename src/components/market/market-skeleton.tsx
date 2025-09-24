@@ -63,5 +63,63 @@ export function MarketListSkeleton({ count = 6, className }: WrapProps) {
   )
 }
 
-/** Default to grid so `import MarketSkeleton from ...` also works */
+/** Detail page skeleton for /markets/[id] */
+export function MarketDetailSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn('animate-pulse space-y-6', className)}>
+      {/* Header / Title + category chip + meta line */}
+      <div className="space-y-3">
+        <div className="h-7 w-3/4 rounded bg-muted/30" />
+        <div className="h-6 w-24 rounded-full bg-muted/20" />
+        <div className="h-4 w-48 rounded bg-muted/20" />
+      </div>
+
+      {/* Chart + side stats (typical two-column on desktop) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2 bg-card/40">
+          <CardHeader className="space-y-2">
+            <div className="h-5 w-32 rounded bg-muted/20" />
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 w-full rounded-md bg-muted/25" />
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card/40">
+          <CardHeader className="space-y-2">
+            <div className="h-5 w-28 rounded bg-muted/20" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="h-3 w-16 rounded bg-muted/20" />
+                  <div className="h-6 w-20 rounded bg-muted/30" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+          <CardFooter className="flex flex-col gap-3">
+            <div className="h-11 w-full rounded-md bg-muted/30" />
+            <div className="h-11 w-full rounded-md border border-muted/30" />
+          </CardFooter>
+        </Card>
+      </div>
+
+      {/* Description / rules */}
+      <Card className="bg-card/40">
+        <CardHeader className="space-y-2">
+          <div className="h-5 w-24 rounded bg-muted/20" />
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="h-4 w-full rounded bg-muted/20" />
+          <div className="h-4 w-11/12 rounded bg-muted/20" />
+          <div className="h-4 w-10/12 rounded bg-muted/20" />
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+/** Default to grid so `import MarketSkeleton from ...` continues to work */
 export default MarketGridSkeleton
