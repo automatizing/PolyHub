@@ -2,6 +2,7 @@
 
 import React from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { Search, Menu, TrendingUp, BarChart3, Info, Coins } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -49,9 +50,14 @@ export function Header() {
 
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-              P
-            </div>
+            <Image
+              src="/poly.ico"
+              alt="PolyHub logo"
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded-lg"
+              priority
+            />
             <span className="font-bold text-xl">PolyHub</span>
           </Link>
 
