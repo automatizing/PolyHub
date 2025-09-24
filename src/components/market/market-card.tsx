@@ -129,7 +129,8 @@ function MarketCardComponent({ market, className, variant = 'default' }: Props) 
         {/* Outcomes block intentionally removed to declutter */}
         <div className="h-px w-full bg-border/60" />
 
-        <div className={cn('grid gap-3 text-sm', isCompact ? 'grid-cols-2' : 'grid-cols-3')}>
+        {/* Always show 3 stats columns in both views */}
+        <div className={cn('grid grid-cols-3 gap-3 text-sm')}>
           <div className="flex flex-col">
             <span className="text-muted-foreground">Liquidity</span>
             <span className="font-semibold">${formatCompact(market.liquidity)}</span>
@@ -138,12 +139,10 @@ function MarketCardComponent({ market, className, variant = 'default' }: Props) 
             <span className="text-muted-foreground">Volume</span>
             <span className="font-semibold">{formatCompact(market.totalVolume)}</span>
           </div>
-          {!isCompact && (
-            <div className="flex flex-col">
-              <span className="text-muted-foreground">24h Volume</span>
-              <span className="font-semibold">{formatCompact(vol24h)}</span>
-            </div>
-          )}
+          <div className="flex flex-col">
+            <span className="text-muted-foreground">24h Volume</span>
+            <span className="font-semibold">{formatCompact(vol24h)}</span>
+          </div>
         </div>
       </CardContent>
 
@@ -163,7 +162,7 @@ function MarketCardComponent({ market, className, variant = 'default' }: Props) 
         <a
           href={searchUrl}
           target="_blank"
-            rel="noopener noreferrer"
+          rel="noopener noreferrer"
           className={cn(
             buttonVariants({ variant: 'outline', size: 'lg' }),
             'w-full'
