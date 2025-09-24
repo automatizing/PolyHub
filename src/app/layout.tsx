@@ -11,19 +11,38 @@ export const metadata: Metadata = {
     template: '%s | PolyHub',
     default: 'PolyHub | Prediction Markets Platform',
   },
-  description: 'The ultimate prediction markets information hub. Monitor real-world events, track forecasting trends, and connect with fellow predictors.',
+  description:
+    'The ultimate prediction markets information hub. Monitor real-world events, track forecasting trends, and connect with fellow predictors.',
   keywords: ['prediction markets', 'trading', 'forecasting', 'polymarket', 'betting'],
   authors: [{ name: 'PolyHub Team' }],
   creator: 'PolyHub',
   metadataBase: new URL('https://polyhub.app/'),
+
+  // Favicon / icons (helps platforms find your site icon)
+  icons: {
+    icon: '/poly.ico',
+    shortcut: '/poly.ico',
+    apple: '/apple-touch-icon.png',
+  },
+
+  // Use the site icon for link previews (Discord, etc.)
   openGraph: {
     type: 'website',
     locale: 'en_US',
     url: 'https://polyhub.app/',
     siteName: 'PolyHub',
     title: 'PolyHub | Prediction Markets Platform',
-    description: 'The ultimate prediction markets information hub. Monitor real-world events, track forecasting trends, and connect with fellow predictors.',
+    description:
+      'The ultimate prediction markets information hub. Monitor real-world events, track forecasting trends, and connect with fellow predictors.',
     images: [
+      // Put the icon first so scrapers prefer it
+      {
+        url: '/poly.ico',
+        width: 64,
+        height: 64,
+        alt: 'PolyHub Icon',
+      },
+      // Keep your existing OG image as a fallback
       {
         url: '/og-image.png',
         width: 1200,
@@ -32,13 +51,17 @@ export const metadata: Metadata = {
       },
     ],
   },
+
+  // Twitter/X card using the icon
   twitter: {
-    card: 'summary_large_image',
+    card: 'summary',
     title: 'PolyHub | Prediction Markets Platform',
-    description: 'The ultimate prediction markets information hub. Monitor real-world events, track forecasting trends, and connect with fellow predictors.',
-    images: ['/og-image.png'],
+    description:
+      'The ultimate prediction markets information hub. Monitor real-world events, track forecasting trends, and connect with fellow predictors.',
+    images: ['/poly.ico'],
     creator: '@polyhub',
   },
+
   robots: {
     index: true,
     follow: true,
@@ -66,6 +89,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Favicons */}
         <link rel="icon" href="/poly.ico" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
@@ -75,9 +99,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
       <body className={inter.className}>
-        <Providers>
-          {children}
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   )
