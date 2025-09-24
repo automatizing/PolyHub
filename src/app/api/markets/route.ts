@@ -204,7 +204,6 @@ function transformMarket(m: PolymarketMarket): Market {
       return acc
     }, {}),
     // augment with outbound link
-    // @ts-expect-error (our UI reads this field)
     externalUrl,
   } as unknown as Market
 }
@@ -270,7 +269,6 @@ function transformEventToMarket(e: PolymarketEvent): Market {
       return acc
     }, {}),
     // augment with outbound link
-    // @ts-expect-error (our UI reads this field)
     externalUrl,
   } as unknown as Market
 }
@@ -291,7 +289,6 @@ async function fetchWithRetry(url: string, init: RequestInit, retries = 2): Prom
       await delay((i + 1) * 500)
     }
   }
-  // @ts-expect-error
   return new Response(null, { status: 500 })
 }
 
