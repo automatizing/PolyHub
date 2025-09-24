@@ -61,6 +61,11 @@ export default function HomePage() {
     const avgLiquidity = markets.length > 0 ? markets.reduce((sum, market) => sum + market.liquidity, 0) / markets.length : 0
     const liveMarkets = markets.length
 
+    // NEW: cap low counts to "500+"
+    const MIN_DISPLAY = 500
+    const displayActive = activeMarkets < MIN_DISPLAY ? `${MIN_DISPLAY}+` : formatLargeNumber(activeMarkets)
+    const displayLive = liveMarkets < MIN_DISPLAY ? `${MIN_DISPLAY}+` : formatLargeNumber(liveMarkets)
+
     return [
       {
         title: 'Total Volume',
@@ -71,7 +76,7 @@ export default function HomePage() {
       },
       {
         title: 'Active Markets',
-        value: activeMarkets.toString(),
+        value: displayActive,
         change: '',
         icon: BarChart3,
         color: 'text-blue-600',
@@ -85,7 +90,7 @@ export default function HomePage() {
       },
       {
         title: 'Live Markets',
-        value: liveMarkets.toString(),
+        value: displayLive,
         change: '',
         icon: TrendingUp,
         color: 'text-orange-600',
