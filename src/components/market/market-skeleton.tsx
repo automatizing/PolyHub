@@ -4,7 +4,13 @@
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
-type WrapProps = { count?: number; className?: string }
+type Variant = 'grid' | 'list' | 'compact' | 'default' | 'featured'
+type WrapProps = {
+  count?: number
+  className?: string
+  /** Optional layout hint used by pages; 'compact' renders tighter cards */
+  variant?: Variant
+}
 
 function MarketSkeletonCard({ compact = false }: { compact?: boolean }) {
   return (
@@ -42,22 +48,24 @@ function MarketSkeletonCard({ compact = false }: { compact?: boolean }) {
 }
 
 /** Grid version used in most sections */
-export function MarketGridSkeleton({ count = 6, className }: WrapProps) {
+export function MarketGridSkeleton({ count = 6, className, variant }: WrapProps) {
+  const compact = variant === 'compact' || variant === 'list' // allow forcing compact cards in a grid if needed
   return (
     <div className={cn('grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6', className)}>
       {Array.from({ length: count }).map((_, i) => (
-        <MarketSkeletonCard key={i} />
+        <MarketSkeletonCard key={i} compact={compact} />
       ))}
     </div>
   )
 }
 
 /** List version used when viewMode === 'list' */
-export function MarketListSkeleton({ count = 6, className }: WrapProps) {
+export function MarketListSkeleton({ count = 6, className, variant }: WrapProps) {
+  const compact = variant === 'compact' || variant === 'list' || !variant
   return (
     <div className={cn('space-y-6', className)}>
       {Array.from({ length: count }).map((_, i) => (
-        <MarketSkeletonCard key={i} compact />
+        <MarketSkeletonCard key={i} compact={compact} />
       ))}
     </div>
   )
@@ -121,5 +129,5 @@ export function MarketDetailSkeleton({ className }: { className?: string }) {
   )
 }
 
-/** Default to grid so `import MarketSkeleton from ...` continues to work */
+/** Default to grid so `import MarketSkeleton from ...` also works */
 export default MarketGridSkeleton
