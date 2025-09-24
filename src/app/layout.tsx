@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: {
     template: '%s | PolyHub',
-    default: 'PolyHub - Prediction Markets Platform',
+    default: 'PolyHub | Prediction Markets Platform',
   },
   description: 'The ultimate prediction markets information hub. Monitor real-world events, track forecasting trends, and connect with fellow predictors.',
   keywords: ['prediction markets', 'trading', 'forecasting', 'polymarket', 'betting'],
@@ -21,20 +21,20 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: 'https://polyhub.app/',
     siteName: 'PolyHub',
-    title: 'PolyHub - Prediction Markets Platform',
+    title: 'PolyHub | Prediction Markets Platform',
     description: 'The ultimate prediction markets information hub. Monitor real-world events, track forecasting trends, and connect with fellow predictors.',
     images: [
       {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'PolyHub - Prediction Markets Platform',
+        alt: 'PolyHub | Prediction Markets Platform',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'PolyHub - Prediction Markets Platform',
+    title: 'PolyHub | Prediction Markets Platform',
     description: 'The ultimate prediction markets information hub. Monitor real-world events, track forecasting trends, and connect with fellow predictors.',
     images: ['/og-image.png'],
     creator: '@polyhub',
