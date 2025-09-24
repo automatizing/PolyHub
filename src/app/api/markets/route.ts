@@ -113,6 +113,16 @@ const slugify = (s?: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)+/g, '')
 
+// append UTM parameters to outbound links (so you can attribute clicks in analytics)
+function withUtm(url: string, kind: 'market' | 'event', id: string | number) {
+  const u = new URL(url)
+  u.searchParams.set('utm_source', 'polyhub')
+  u.searchParams.set('utm_medium', 'referral')
+  u.searchParams.set('utm_campaign', kind)
+  u.searchParams.set('utm_content', String(id))
+  return u.toString()
+}
+
 function parseOutcomesAndPrices(outcomes: string, outcomePrices: string): MarketOutcome[] {
   try {
     const names: string[] = JSON.parse(outcomes || '["Yes","No"]')
@@ -168,8 +178,8 @@ function transformMarket(m: PolymarketMarket): Market {
   const vol24 = m.volume24hr || 0
   outcomes.forEach((o) => (o.volume24h = vol24 / (outcomes.length || 1)))
 
-  const externalUrl =
-    `https://polymarket.com/market/${m.slug || slugify(m.question)}`
+  const base = `https://polymarket.com/market/${m.slug || slugify(m.question)}`
+  const externalUrl = withUtm(base, 'market', m.id)
 
   return {
     id: m.id,
@@ -193,7 +203,8 @@ function transformMarket(m: PolymarketMarket): Market {
       acc[o.id] = o.price
       return acc
     }, {}),
-    // attach external link (non-breaking even if Market type doesn't declare it)
+    // augment with outbound link
+    // @ts-expect-error (our UI reads this field)
     externalUrl,
   } as unknown as Market
 }
@@ -233,8 +244,8 @@ function transformEventToMarket(e: PolymarketEvent): Market {
       ? e.markets.reduce((sum, m) => sum + (m.liquidityNum ?? Number(m.liquidity ?? 0)), 0)
       : 0)
 
-  const externalUrl =
-    `https://polymarket.com/event/${e.slug || slugify(e.title)}`
+  const base = `https://polymarket.com/event/${e.slug || slugify(e.title)}`
+  const externalUrl = withUtm(base, 'event', e.id)
 
   return {
     id: `event-${e.id}`,
@@ -258,7 +269,8 @@ function transformEventToMarket(e: PolymarketEvent): Market {
       acc[o.id] = o.price
       return acc
     }, {}),
-    // attach external link (non-breaking even if Market type doesn't declare it)
+    // augment with outbound link
+    // @ts-expect-error (our UI reads this field)
     externalUrl,
   } as unknown as Market
 }
@@ -279,6 +291,7 @@ async function fetchWithRetry(url: string, init: RequestInit, retries = 2): Prom
       await delay((i + 1) * 500)
     }
   }
+  // @ts-expect-error
   return new Response(null, { status: 500 })
 }
 
