@@ -213,7 +213,7 @@ export default function MarketsPage() {
             </div>
           </div>
 
-          {/* Mobile Filters */}
+        {/* Mobile Filters */}
           {showFilters && (
             <div className="lg:hidden fixed inset-0 z-50 bg-background p-4 overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
@@ -279,6 +279,19 @@ export default function MarketsPage() {
                     Try adjusting your filters or search terms, or check back later for new markets
                   </p>
                   <div className="flex gap-2 justify-center">
+                    {/* ADDED: View on Polymarket */}
+                    <Button
+                      onClick={() => {
+                        const q = (searchQuery || '').trim()
+                        const url = q
+                          ? `https://polymarket.com/search?_q=${encodeURIComponent(q)}`
+                          : 'https://polymarket.com/search'
+                        window.open(url, '_blank')
+                      }}
+                    >
+                      View on Polymarket
+                    </Button>
+
                     <Button variant="outline" onClick={() => window.location.reload()}>
                       Reset Filters
                     </Button>
